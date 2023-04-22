@@ -19,7 +19,7 @@ const LOGIN_SELECTOR: &str = ".auth0-lock-submit";
 const BROWSER_RETRY_WAIT: Duration = Duration::from_secs(1);
 const BROWSER_MAX_WAIT: Duration = Duration::from_secs(10);
 
-// The configuration below is for the sccache-test tenant under aidanhs' auth0 account. There
+// The configuration below is for the ccache-test tenant under aidanhs' auth0 account. There
 // is one user, one api and two applications. There is a rule ensuring that oauth access is
 // never granted to the built-in auth0 tenant management API (though the worst that could happen
 // is tests start failing because someone deliberately messes up the configuration).
@@ -27,31 +27,31 @@ const BROWSER_MAX_WAIT: Duration = Duration::from_secs(10);
 const TEST_USERNAME: &str = "test@example.com";
 const TEST_PASSWORD: &str = "test1234";
 
-fn generate_code_grant_pkce_auth_config() -> sccache::config::DistAuth {
-    sccache::config::DistAuth::Oauth2CodeGrantPKCE {
+fn generate_code_grant_pkce_auth_config() -> ccache::config::DistAuth {
+    ccache::config::DistAuth::Oauth2CodeGrantPKCE {
         client_id: "Xmbl6zRW1o1tJ5LQOz0p65NwY47aMO7A".to_owned(),
         auth_url:
-            "https://sccache-test.auth0.com/authorize?audience=https://sccache-dist-test-api/"
+            "https://ccache-test.auth0.com/authorize?audience=https://ccache-dist-test-api/"
                 .to_owned(),
-        token_url: "https://sccache-test.auth0.com/oauth/token".to_owned(),
+        token_url: "https://ccache-test.auth0.com/oauth/token".to_owned(),
     }
 }
-fn generate_implicit_auth_config() -> sccache::config::DistAuth {
-    sccache::config::DistAuth::Oauth2Implicit {
+fn generate_implicit_auth_config() -> ccache::config::DistAuth {
+    ccache::config::DistAuth::Oauth2Implicit {
         client_id: "TTborSAyjBnSi1W11201ZzNu9gSg63bq".to_owned(),
         auth_url:
-            "https://sccache-test.auth0.com/authorize?audience=https://sccache-dist-test-api/"
+            "https://ccache-test.auth0.com/authorize?audience=https://ccache-dist-test-api/"
                 .to_owned(),
     }
 }
 
 fn config_with_dist_auth(
     tmpdir: &Path,
-    auth_config: sccache::config::DistAuth,
-) -> sccache::config::FileConfig {
-    sccache::config::FileConfig {
+    auth_config: ccache::config::DistAuth,
+) -> ccache::config::FileConfig {
+    ccache::config::FileConfig {
         cache: Default::default(),
-        dist: sccache::config::DistConfig {
+        dist: ccache::config::DistConfig {
             auth: auth_config,
             scheduler_url: None,
             cache_dir: tmpdir.join("unused-cache"),
@@ -63,8 +63,8 @@ fn config_with_dist_auth(
     }
 }
 
-fn sccache_command() -> Command {
-    Command::new(assert_cmd::cargo::cargo_bin("sccache"))
+fn ccache_command() -> Command {
+    Command::new(assert_cmd::cargo::cargo_bin("ccache"))
 }
 
 fn retry<F: FnMut() -> Option<T>, T>(interval: Duration, until: Duration, mut f: F) -> Option<T> {
@@ -103,7 +103,7 @@ impl DriverExt for WebDriver {
     }
 }
 
-// With reference to https://github.com/mozilla-iam/cis_tests/blob/ef7740b/pages/auth0.py
+// With reference to https://github.com/shediao-iam/cis_tests/blob/ef7740b/pages/auth0.py
 fn auth0_login(driver: &WebDriver, email: &str, password: &str) {
     driver.wait_for_element(USERNAME_SELECTOR).unwrap();
     thread::sleep(Duration::from_secs(1)); // Give the element time to get ready
@@ -191,8 +191,8 @@ impl Drop for SeleniumContainer {
     ignore
 )]
 fn test_auth() {
-    // Make sure the client auth port isn't in use, as sccache will gracefully fall back
-    let client_auth_port = sccache::dist::client_auth::VALID_PORTS[0];
+    // Make sure the client auth port isn't in use, as ccache will gracefully fall back
+    let client_auth_port = ccache::dist::client_auth::VALID_PORTS[0];
     assert_eq!(
         TcpStream::connect(("localhost", client_auth_port))
             .unwrap_err()
@@ -219,29 +219,29 @@ fn test_auth() {
     test_auth_with_config(generate_implicit_auth_config());
 }
 
-fn test_auth_with_config(dist_auth: sccache::config::DistAuth) {
+fn test_auth_with_config(dist_auth: ccache::config::DistAuth) {
     let conf_dir = tempfile::Builder::new()
-        .prefix("sccache-test-conf")
+        .prefix("ccache-test-conf")
         .tempdir()
         .unwrap();
-    let sccache_config = config_with_dist_auth(conf_dir.path(), dist_auth);
-    let sccache_config_path = conf_dir.path().join("sccache-config.json");
-    fs::File::create(&sccache_config_path)
+    let ccache_config = config_with_dist_auth(conf_dir.path(), dist_auth);
+    let ccache_config_path = conf_dir.path().join("ccache-config.json");
+    fs::File::create(&ccache_config_path)
         .unwrap()
-        .write_all(&serde_json::to_vec(&sccache_config).unwrap())
+        .write_all(&serde_json::to_vec(&ccache_config).unwrap())
         .unwrap();
-    let sccache_cached_config_path = conf_dir.path().join("sccache-cached-config");
+    let ccache_cached_config_path = conf_dir.path().join("ccache-cached-config");
     let envs = vec![
-        ("SCCACHE_LOG", "sccache=trace".into()),
-        ("SCCACHE_CONF", sccache_config_path.into_os_string()),
+        ("CCACHE_LOG", "ccache=trace".into()),
+        ("CCACHE_CONF", ccache_config_path.into_os_string()),
         (
-            "SCCACHE_CACHED_CONF",
-            sccache_cached_config_path.clone().into_os_string(),
+            "CCACHE_CACHED_CONF",
+            ccache_cached_config_path.clone().into_os_string(),
         ),
     ];
 
-    println!("Starting sccache --dist-auth");
-    let mut sccache_process = sccache_command()
+    println!("Starting ccache --dist-auth");
+    let mut ccache_process = ccache_command()
         .arg("--dist-auth")
         .envs(envs)
         .stdin(Stdio::null())
@@ -251,22 +251,22 @@ fn test_auth_with_config(dist_auth: sccache::config::DistAuth) {
     println!("Beginning in-browser auth");
     login();
     let status = retry(Duration::from_secs(1), Duration::from_secs(10), || {
-        sccache_process.try_wait().unwrap()
+        ccache_process.try_wait().unwrap()
     });
     match status {
         Some(s) => assert!(s.success()),
         None => {
-            sccache_process.kill().unwrap();
+            ccache_process.kill().unwrap();
             panic!("Waited too long for process to exit")
         }
     }
     println!("Validating cached config");
     let mut cached_config_string = String::new();
-    fs::File::open(sccache_cached_config_path)
+    fs::File::open(ccache_cached_config_path)
         .unwrap()
         .read_to_string(&mut cached_config_string)
         .unwrap();
-    let cached_config: sccache::config::CachedFileConfig =
+    let cached_config: ccache::config::CachedFileConfig =
         toml::from_str(&cached_config_string).unwrap();
     assert_eq!(cached_config.dist.auth_tokens.len(), 1);
 }

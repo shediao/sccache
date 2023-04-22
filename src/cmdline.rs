@@ -1,4 +1,4 @@
-// Copyright 2016 Mozilla Foundation
+// Copyright 2016 Shediao Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use which::which_in;
 
-const ENV_VAR_INTERNAL_START_SERVER: &str = "SCCACHE_START_SERVER";
+const ENV_VAR_INTERNAL_START_SERVER: &str = "CCACHE_START_SERVER";
 
 #[derive(Debug, Clone, ValueEnum)]
 pub enum StatsFormat {
@@ -175,7 +175,7 @@ pub fn try_parse() -> Result<Command> {
     trace!("parse");
 
     let cwd =
-        env::current_dir().context("sccache: Couldn't determine current working directory")?;
+        env::current_dir().context("ccache: Couldn't determine current working directory")?;
 
     // We only care if it's `1`
     let internal_start_server = env::var(ENV_VAR_INTERNAL_START_SERVER).as_deref() == Ok("1");
@@ -191,7 +191,7 @@ pub fn try_parse() -> Result<Command> {
                 // If the executable has its standard name, do nothing.
                 Some(ref e) if e == env!("CARGO_PKG_NAME") => {}
                 // Otherwise, if it was copied/hardlinked under a different $name, act
-                // as if it were invoked with `sccache $name`, but avoid $name resolving
+                // as if it were invoked with `ccache $name`, but avoid $name resolving
                 // to ourselves again if it's in the PATH.
                 _ => {
                     if let (Some(path), Some(exe_filename)) = (env::var_os("PATH"), exe.file_name())

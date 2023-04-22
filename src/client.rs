@@ -1,4 +1,4 @@
-// Copyright 2016 Mozilla Foundation
+// Copyright 2016 Shediao Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ use retry::{delay::Fixed, retry};
 use std::io::{self, BufReader, BufWriter, Read};
 use std::net::TcpStream;
 
-/// A connection to an sccache server.
+/// A connection to an ccache server.
 pub struct ServerConnection {
     /// A reader for the socket connected to the server.
     reader: BufReader<TcpStream>,
@@ -62,14 +62,14 @@ impl ServerConnection {
     }
 }
 
-/// Establish a TCP connection to an sccache server listening on `port`.
+/// Establish a TCP connection to an ccache server listening on `port`.
 pub fn connect_to_server(port: u16) -> io::Result<ServerConnection> {
     trace!("connect_to_server({})", port);
     let stream = TcpStream::connect(("127.0.0.1", port))?;
     ServerConnection::new(stream)
 }
 
-/// Attempt to establish a TCP connection to an sccache server listening on `port`.
+/// Attempt to establish a TCP connection to an ccache server listening on `port`.
 ///
 /// If the connection fails, retry a few times.
 pub fn connect_with_retry(port: u16) -> io::Result<ServerConnection> {

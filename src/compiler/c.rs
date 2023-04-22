@@ -1,4 +1,4 @@
-// Copyright 2016 Mozilla Foundation
+// Copyright 2016 Shediao Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -276,7 +276,7 @@ impl<T: CommandCreatorSync, I: CCompilerImpl> Compiler<T> for CCompiler<I> {
         match self.compiler.parse_arguments(arguments, cwd) {
             CompilerArguments::Ok(mut args) => {
                 for (k, v) in env_vars.iter() {
-                    if k.as_os_str() == OsStr::new("SCCACHE_EXTRAFILES") {
+                    if k.as_os_str() == OsStr::new("CCACHE_EXTRAFILES") {
                         args.extra_hash_files.extend(std::env::split_paths(&v))
                     }
                 }
@@ -688,11 +688,11 @@ pub const CACHE_VERSION: &[u8] = b"11";
 lazy_static! {
     /// Environment variables that are factored into the cache key.
     static ref CACHED_ENV_VARS: HashSet<&'static OsStr> = [
-        // SCCACHE_C_CUSTOM_CACHE_BUSTER has no particular meaning behind it,
+        // CCACHE_C_CUSTOM_CACHE_BUSTER has no particular meaning behind it,
         // serving as a way for the user to factor custom data into the hash.
         // One can set it to different values for different invocations
         // to prevent cache reuse between them.
-        "SCCACHE_C_CUSTOM_CACHE_BUSTER",
+        "CCACHE_C_CUSTOM_CACHE_BUSTER",
         "MACOSX_DEPLOYMENT_TARGET",
         "IPHONEOS_DEPLOYMENT_TARGET",
         "TVOS_DEPLOYMENT_TARGET",

@@ -1,4 +1,4 @@
-// Copyright 2017 Mozilla Foundation
+// Copyright 2017 Shediao Foundation
 // Copyright 2017 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -79,10 +79,10 @@ impl GCSCache {
 
 /// TaskClusterTokenLoeader is used to load tokens from [TaskCluster](https://taskcluster.net/)
 ///
-/// This feature is required to run [mozilla's CI](https://searchfox.org/mozilla-central/source/build/mozconfig.cache#67-84):
+/// This feature is required to run [shediao's CI](https://searchfox.org/shediao-central/source/build/mozconfig.cache#67-84):
 ///
 /// ```txt
-/// export SCCACHE_GCS_CREDENTIALS_URL=http://taskcluster/auth/v1/gcp/credentials/$SCCACHE_GCS_PROJECT/${bucket}@$SCCACHE_GCS_PROJECT.iam.gserviceaccount.com"
+/// export CCACHE_GCS_CREDENTIALS_URL=http://taskcluster/auth/v1/gcp/credentials/$CCACHE_GCS_PROJECT/${bucket}@$CCACHE_GCS_PROJECT.iam.gserviceaccount.com"
 /// ```
 ///
 /// Reference: [gcpCredentials](https://docs.taskcluster.net/docs/reference/platform/auth/api#gcpCredentials)

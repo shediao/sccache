@@ -44,7 +44,7 @@ mod client {
         // Toolchains configured to not be distributed
         disabled_toolchains: HashSet<PathBuf>,
         // Local machine mapping from 'weak' hashes to strong toolchain hashes
-        // - Weak hashes are what sccache uses to determine if a compiler has changed
+        // - Weak hashes are what ccache uses to determine if a compiler has changed
         //   on the local machine - they're fast and 'good enough' (assuming we trust
         //   the local machine), but not safe if other users can update the cache.
         // - Strong hashes (or 'archive ids') are the hash of the complete compiler contents that
@@ -312,7 +312,7 @@ mod client {
         #[test]
         fn test_client_toolchains_custom() {
             let td = tempfile::Builder::new()
-                .prefix("sccache")
+                .prefix("ccache")
                 .tempdir()
                 .unwrap();
 
@@ -343,7 +343,7 @@ mod client {
         #[test]
         fn test_client_toolchains_custom_multiuse_archive() {
             let td = tempfile::Builder::new()
-                .prefix("sccache")
+                .prefix("ccache")
                 .tempdir()
                 .unwrap();
 
@@ -404,7 +404,7 @@ mod client {
         #[test]
         fn test_client_toolchains_nodist() {
             let td = tempfile::Builder::new()
-                .prefix("sccache")
+                .prefix("ccache")
                 .tempdir()
                 .unwrap();
 
@@ -429,7 +429,7 @@ mod client {
         #[test]
         fn test_client_toolchains_custom_nodist_conflict() {
             let td = tempfile::Builder::new()
-                .prefix("sccache")
+                .prefix("ccache")
                 .tempdir()
                 .unwrap();
 

@@ -1,4 +1,4 @@
-// Copyright 2016 Mozilla Foundation
+// Copyright 2016 Shediao Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -10,7 +10,7 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
-// limitations under the License.SCCACHE_MAX_FRAME_LENGTH
+// limitations under the License.CCACHE_MAX_FRAME_LENGTH
 
 use crate::cache::{storage_from_config, Storage};
 use crate::compiler::{
@@ -91,7 +91,7 @@ pub enum ServerStartup {
 /// Get the time the server should idle for before shutting down, in seconds.
 fn get_idle_timeout() -> u64 {
     // A value of 0 disables idle shutdown entirely.
-    env::var("SCCACHE_IDLE_TIMEOUT")
+    env::var("CCACHE_IDLE_TIMEOUT")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(DEFAULT_IDLE_TIMEOUT)
@@ -143,7 +143,7 @@ pub struct DistClientContainer {
 
 #[cfg(feature = "dist-client")]
 struct DistClientConfig {
-    // Reusable items tied to an SccacheServer instance
+    // Reusable items tied to an CcacheServer instance
     pool: tokio::runtime::Handle,
 
     // From the static dist configuration
@@ -171,7 +171,7 @@ impl DistClientContainer {
     #[cfg(not(feature = "dist-client"))]
     fn new(config: &Config, _: &tokio::runtime::Handle) -> Self {
         if config.dist.scheduler_url.is_some() {
-            warn!("Scheduler address configured but dist feature disabled, disabling distributed sccache")
+            warn!("Scheduler address configured but dist feature disabled, disabling distributed ccache")
         }
         Self {}
     }
@@ -333,7 +333,7 @@ impl DistClientContainer {
         match config.scheduler_url {
             Some(ref addr) => {
                 let url = addr.to_url();
-                info!("Enabling distributed sccache to {}", url);
+                info!("Enabling distributed ccache to {}", url);
                 let auth_token = match &config.auth {
                     config::DistAuth::Token { token } => Ok(token.to_owned()),
                     config::DistAuth::Oauth2CodeGrantPKCE { auth_url, .. }
@@ -342,7 +342,7 @@ impl DistClientContainer {
                     }
                 };
                 let auth_token = try_or_fail_with_message!(auth_token
-                    .context("could not load client auth token, run |sccache --dist-auth|"));
+                    .context("could not load client auth token, run |ccache --dist-auth|"));
                 let dist_client = dist::http::Client::new(
                     &config.pool,
                     url,
@@ -373,7 +373,7 @@ impl DistClientContainer {
                 }
             }
             None => {
-                info!("No scheduler address configured, disabling distributed sccache");
+                info!("No scheduler address configured, disabling distributed ccache");
                 DistClientState::Disabled
             }
         }
@@ -387,7 +387,7 @@ impl DistClientContainer {
     }
 }
 
-/// Start an sccache server, listening on `port`.
+/// Start an ccache server, listening on `port`.
 ///
 /// Spins an event loop handling client connections until a client
 /// requests a shutdown.
@@ -401,7 +401,7 @@ pub fn start_server(config: &Config, port: u16) -> Result<()> {
     let pool = runtime.handle().clone();
     let dist_client = DistClientContainer::new(config, &pool);
 
-    let notify = env::var_os("SCCACHE_STARTUP_NOTIFY");
+    let notify = env::var_os("CCACHE_STARTUP_NOTIFY");
 
     let storage = match storage_from_config(config, &pool) {
         Ok(storage) => storage,
@@ -439,7 +439,7 @@ pub fn start_server(config: &Config, port: u16) -> Result<()> {
     info!("server has setup with {cache_mode:?}");
 
     let res =
-        SccacheServer::<ProcessCommandCreator>::new(port, runtime, client, dist_client, storage);
+        CcacheServer::<ProcessCommandCreator>::new(port, runtime, client, dist_client, storage);
     match res {
         Ok(srv) => {
             let port = srv.port();
@@ -458,7 +458,7 @@ pub fn start_server(config: &Config, port: u16) -> Result<()> {
                     // 10013 is the "WSAEACCES" error, which can occur if the requested port
                     // has been allocated for other purposes, such as winNAT or Hyper-V.
                     let windows_help_message =
-                        "A Windows port exclusion is blocking use of the configured port.\nTry setting SCCACHE_SERVER_PORT to a new value.";
+                        "A Windows port exclusion is blocking use of the configured port.\nTry setting CCACHE_SERVER_PORT to a new value.";
                     let reason: String = format!("{windows_help_message}\n{e}");
                     notify_server_startup(&notify, ServerStartup::Err { reason })?;
                 }
@@ -472,23 +472,23 @@ pub fn start_server(config: &Config, port: u16) -> Result<()> {
     }
 }
 
-pub struct SccacheServer<C: CommandCreatorSync> {
+pub struct CcacheServer<C: CommandCreatorSync> {
     runtime: Runtime,
     listener: TcpListener,
     rx: mpsc::Receiver<ServerMessage>,
     timeout: Duration,
-    service: SccacheService<C>,
+    service: CcacheService<C>,
     wait: WaitUntilZero,
 }
 
-impl<C: CommandCreatorSync> SccacheServer<C> {
+impl<C: CommandCreatorSync> CcacheServer<C> {
     pub fn new(
         port: u16,
         runtime: Runtime,
         client: Client,
         dist_client: DistClientContainer,
         storage: Arc<dyn Storage>,
-    ) -> Result<SccacheServer<C>> {
+    ) -> Result<CcacheServer<C>> {
         let addr = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), port);
         let listener = runtime.block_on(TcpListener::bind(&SocketAddr::V4(addr)))?;
 
@@ -507,15 +507,15 @@ impl<C: CommandCreatorSync> SccacheServer<C> {
         client: Client,
         dist_client: DistClientContainer,
         storage: Arc<dyn Storage>,
-    ) -> SccacheServer<C> {
+    ) -> CcacheServer<C> {
         // Prepare the service which we'll use to service all incoming TCP
         // connections.
         let (tx, rx) = mpsc::channel(1);
         let (wait, info) = WaitUntilZero::new();
         let pool = runtime.handle().clone();
-        let service = SccacheService::new(dist_client, storage, &client, pool, tx, info);
+        let service = CcacheService::new(dist_client, storage, &client, pool, tx, info);
 
-        SccacheServer {
+        CcacheServer {
             runtime,
             listener,
             rx,
@@ -565,7 +565,7 @@ impl<C: CommandCreatorSync> SccacheServer<C> {
         F: Future,
         C: Send,
     {
-        let SccacheServer {
+        let CcacheServer {
             runtime,
             listener,
             rx,
@@ -638,7 +638,7 @@ impl<C: CommandCreatorSync> SccacheServer<C> {
         // Once our server has shut down either due to inactivity or a manual
         // request we still need to give a bit of time for all active
         // connections to finish. This `wait` future will resolve once all
-        // instances of `SccacheService` have been dropped.
+        // instances of `CcacheService` have been dropped.
         //
         // Note that we cap the amount of time this can take, however, as we
         // don't want to wait *too* long.
@@ -677,16 +677,16 @@ impl<C> CompilerCacheEntry<C> {
         }
     }
 }
-/// Service implementation for sccache
+/// Service implementation for ccache
 #[derive(Clone)]
-struct SccacheService<C>
+struct CcacheService<C>
 where
     C: Send,
 {
     /// Server statistics.
     stats: Arc<Mutex<ServerStats>>,
 
-    /// Distributed sccache client
+    /// Distributed ccache client
     dist_client: Arc<DistClientContainer>,
 
     /// Cache storage.
@@ -725,8 +725,8 @@ where
     info: ActiveInfo,
 }
 
-type SccacheRequest = Message<Request, Body<()>>;
-type SccacheResponse = Message<Response, Body<Response>>;
+type CcacheRequest = Message<Request, Body<()>>;
+type CcacheResponse = Message<Response, Body<Response>>;
 
 /// Messages sent from all services to the main event loop indicating activity.
 ///
@@ -740,15 +740,15 @@ pub enum ServerMessage {
     Shutdown,
 }
 
-impl<C> Service<SccacheRequest> for Arc<SccacheService<C>>
+impl<C> Service<CcacheRequest> for Arc<CcacheService<C>>
 where
     C: CommandCreatorSync + Send + Sync + 'static,
 {
-    type Response = SccacheResponse;
+    type Response = CcacheResponse;
     type Error = Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response>> + Send + 'static>>;
 
-    fn call(&mut self, req: SccacheRequest) -> Self::Future {
+    fn call(&mut self, req: CcacheRequest) -> Self::Future {
         trace!("handle_client");
 
         // Opportunistically let channel know that we've received a request. We
@@ -813,7 +813,7 @@ where
 use futures::future::Either;
 use futures::TryStreamExt;
 
-impl<C> SccacheService<C>
+impl<C> CcacheService<C>
 where
     C: CommandCreatorSync + Clone + Send + Sync + 'static,
 {
@@ -824,8 +824,8 @@ where
         rt: tokio::runtime::Handle,
         tx: mpsc::Sender<ServerMessage>,
         info: ActiveInfo,
-    ) -> SccacheService<C> {
-        SccacheService {
+    ) -> CcacheService<C> {
+        CcacheService {
             stats: Arc::default(),
             dist_client: Arc::new(dist_client),
             storage,
@@ -843,16 +843,16 @@ where
         T: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     {
         let mut builder = length_delimited::Builder::new();
-        if let Ok(max_frame_length_str) = env::var("SCCACHE_MAX_FRAME_LENGTH") {
+        if let Ok(max_frame_length_str) = env::var("CCACHE_MAX_FRAME_LENGTH") {
             if let Ok(max_frame_length) = max_frame_length_str.parse::<usize>() {
                 builder.max_frame_length(max_frame_length);
             } else {
-                warn!("Content of SCCACHE_MAX_FRAME_LENGTH is not a valid number, using default");
+                warn!("Content of CCACHE_MAX_FRAME_LENGTH is not a valid number, using default");
             }
         }
         let io = builder.new_framed(socket);
 
-        let (sink, stream) = SccacheTransport {
+        let (sink, stream) = CcacheTransport {
             inner: Framed::new(io.sink_err_into().err_into(), BincodeCodec),
         }
         .split();
@@ -912,7 +912,7 @@ where
     /// This will handle a compile request entirely, generating a response with
     /// the initial information and an optional body which will eventually
     /// contain the results of the compilation.
-    async fn handle_compile(&self, compile: Compile) -> Result<SccacheResponse> {
+    async fn handle_compile(&self, compile: Compile) -> Result<CcacheResponse> {
         let exe = compile.exe;
         let cmd = compile.args;
         let cwd: PathBuf = compile.cwd.into();
@@ -1092,7 +1092,7 @@ where
         cmd: Vec<OsString>,
         cwd: PathBuf,
         env_vars: Vec<(OsString, OsString)>,
-    ) -> SccacheResponse {
+    ) -> CcacheResponse {
         match compiler {
             Err(e) => {
                 debug!("check_compiler: Unsupported compiler: {}", e.to_string());
@@ -1153,7 +1153,7 @@ where
     ) {
         let force_recache = env_vars
             .iter()
-            .any(|&(ref k, ref _v)| k.as_os_str() == OsStr::new("SCCACHE_RECACHE"));
+            .any(|&(ref k, ref _v)| k.as_os_str() == OsStr::new("CCACHE_RECACHE"));
         let cache_control = if force_recache {
             CacheControl::ForceRecache
         } else {
@@ -1291,11 +1291,11 @@ where
 
                                 error!("[{:?}] fatal error: {}", out_pretty, err);
 
-                                let mut error = "sccache: encountered fatal error\n".to_string();
-                                let _ = writeln!(error, "sccache: error: {}", err);
+                                let mut error = "ccache: encountered fatal error\n".to_string();
+                                let _ = writeln!(error, "ccache: error: {}", err);
                                 for e in err.chain() {
                                     error!("[{:?}] \t{}", out_pretty, e);
-                                    let _ = writeln!(error, "sccache: caused by: {}", e);
+                                    let _ = writeln!(error, "ccache: caused by: {}", e);
                                 }
                                 stats.cache_errors.increment(&kind);
                                 //TODO: figure out a better way to communicate this?
@@ -1734,7 +1734,7 @@ where
 ///   `Sink` implementation to switch from `BytesMut` to `Response` meaning that
 ///   all `Response` types pushed in will be converted to `BytesMut` and pushed
 ///   below.
-struct SccacheTransport<I: AsyncRead + AsyncWrite + Unpin> {
+struct CcacheTransport<I: AsyncRead + AsyncWrite + Unpin> {
     inner: Framed<
         futures::stream::ErrInto<
             futures::sink::SinkErrInto<
@@ -1750,7 +1750,7 @@ struct SccacheTransport<I: AsyncRead + AsyncWrite + Unpin> {
     >,
 }
 
-impl<I: AsyncRead + AsyncWrite + Unpin> Stream for SccacheTransport<I> {
+impl<I: AsyncRead + AsyncWrite + Unpin> Stream for CcacheTransport<I> {
     type Item = Result<Message<Request, Body<()>>>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -1760,7 +1760,7 @@ impl<I: AsyncRead + AsyncWrite + Unpin> Stream for SccacheTransport<I> {
     }
 }
 
-impl<I: AsyncRead + AsyncWrite + Unpin> Sink<Frame<Response, Response>> for SccacheTransport<I> {
+impl<I: AsyncRead + AsyncWrite + Unpin> Sink<Frame<Response, Response>> for CcacheTransport<I> {
     type Error = Error;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<()>> {

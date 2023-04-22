@@ -1,7 +1,7 @@
 #include <stdio.h>
 
-#if !defined(SCCACHE_TEST_DEFINE)
-#error SCCACHE_TEST_DEFINE is not defined
+#if !defined(CCACHE_TEST_DEFINE)
+#error CCACHE_TEST_DEFINE is not defined
 #endif
 
 void foo() { printf("hello world\n"); }

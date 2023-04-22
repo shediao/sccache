@@ -1,9 +1,9 @@
 [package]
-name = "sccache"
+name = "ccache"
 version = "0.4.1"
 license = "Apache-2.0"
-description = "Sccache is a ccache-like tool. It is used as a compiler wrapper and avoids compilation when possible, storing a cache in a remote storage using various cloud storage."
-repository = "https://github.com/mozilla/sccache/"
+description = "Ccache is a ccache-like tool. It is used as a compiler wrapper and avoids compilation when possible, storing a cache in a remote storage using various cloud storage."
+repository = "https://github.com/shediao/ccache/"
 readme = "README.md"
 categories = ["command-line-utilities", "development-tools::build-utils"]
 keywords = ["ccache"]
@@ -11,10 +11,10 @@ edition = "2021"
 rust-version = "1.60"
 
 [[bin]]
-name = "sccache"
+name = "ccache"
 
 [[bin]]
-name = "sccache-dist"
+name = "ccache-dist"
 required-features = ["dist-server"]
 
 [profile.release]
@@ -134,9 +134,9 @@ redis = ["url", "opendal/services-redis"]
 vendored-openssl = ["openssl?/vendored"]
 # Enable features that require unstable features of Nightly Rust.
 unstable = []
-# Enables distributed support in the sccache client
+# Enables distributed support in the ccache client
 dist-client = ["flate2", "hyper", "reqwest", "url", "sha2"]
-# Enables the sccache-dist binary
+# Enables the ccache-dist binary
 dist-server = ["crossbeam-utils", "jsonwebtoken", "flate2", "libmount", "nix", "openssl", "reqwest", "rouille", "syslog", "void", "version-compare"]
 # Enables dist tests with external requirements
 dist-tests = ["dist-client", "dist-server"]

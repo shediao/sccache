@@ -2184,7 +2184,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sccache"
+name = "ccache"
 version = "0.4.1"
 dependencies = [
  "anyhow",

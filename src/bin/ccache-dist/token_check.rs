@@ -1,8 +1,8 @@
 use crate::jwt;
 use anyhow::{bail, Context, Result};
 use base64::Engine;
-use sccache::dist::http::{ClientAuthCheck, ClientVisibleMsg};
-use sccache::util::{new_reqwest_blocking_client, BASE64_URL_SAFE_ENGINE};
+use ccache::dist::http::{ClientAuthCheck, ClientVisibleMsg};
+use ccache::util::{new_reqwest_blocking_client, BASE64_URL_SAFE_ENGINE};
 use std::collections::HashMap;
 use std::result::Result as StdResult;
 use std::sync::Mutex;
@@ -73,30 +73,30 @@ impl EqCheck {
     }
 }
 
-// https://infosec.mozilla.org/guidelines/iam/openid_connect#session-handling
+// https://infosec.shediao.org/guidelines/iam/openid_connect#session-handling
 const MOZ_SESSION_TIMEOUT: Duration = Duration::from_secs(60 * 15);
-const MOZ_USERINFO_ENDPOINT: &str = "https://auth.mozilla.auth0.com/userinfo";
+const MOZ_USERINFO_ENDPOINT: &str = "https://auth.shediao.auth0.com/userinfo";
 
-/// Mozilla-specific check by forwarding the token onto the auth0 userinfo endpoint
-pub struct MozillaCheck {
+/// Shediao-specific check by forwarding the token onto the auth0 userinfo endpoint
+pub struct ShediaoCheck {
     // token, token_expiry
     auth_cache: Mutex<HashMap<String, Instant>>,
     client: reqwest::blocking::Client,
     required_groups: Vec<String>,
 }
 
-impl ClientAuthCheck for MozillaCheck {
+impl ClientAuthCheck for ShediaoCheck {
     fn check(&self, token: &str) -> StdResult<(), ClientVisibleMsg> {
-        self.check_mozilla(token).map_err(|e| {
-            warn!("Mozilla token validation failed: {}", e);
+        self.check_shediao(token).map_err(|e| {
+            warn!("Shediao token validation failed: {}", e);
             ClientVisibleMsg::from_nonsensitive(
-                "Failed to validate Mozilla OAuth token, run sccache --dist-auth".to_owned(),
+                "Failed to validate Shediao OAuth token, run ccache --dist-auth".to_owned(),
             )
         })
     }
 }
 
-impl MozillaCheck {
+impl ShediaoCheck {
     pub fn new(required_groups: Vec<String>) -> Self {
         Self {
             auth_cache: Mutex::new(HashMap::new()),
@@ -105,14 +105,14 @@ impl MozillaCheck {
         }
     }
 
-    fn check_mozilla(&self, token: &str) -> Result<()> {
+    fn check_shediao(&self, token: &str) -> Result<()> {
         // azp == client_id
         // {
-        //   "iss": "https://auth.mozilla.auth0.com/",
-        //   "sub": "ad|Mozilla-LDAP|asayers",
+        //   "iss": "https://auth.shediao.auth0.com/",
+        //   "sub": "ad|Shediao-LDAP|asayers",
         //   "aud": [
-        //     "sccache",
-        //     "https://auth.mozilla.auth0.com/userinfo"
+        //     "ccache",
+        //     "https://auth.shediao.auth0.com/userinfo"
         //   ],
         //   "iat": 1541103283,
         //   "exp": 1541708083,
@@ -120,7 +120,7 @@ impl MozillaCheck {
         //   "scope": "openid"
         // }
         #[derive(Deserialize)]
-        struct MozillaToken {
+        struct ShediaoToken {
             exp: u64,
             sub: String,
         }
@@ -130,10 +130,10 @@ impl MozillaCheck {
         // We don't really do any validation here (just forwarding on) so it's ok to unsafely decode
         validation.insecure_disable_signature_validation();
         let dummy_key = jwt::DecodingKey::from_secret(b"secret");
-        let insecure_token = jwt::decode::<MozillaToken>(token, &dummy_key, &validation)
+        let insecure_token = jwt::decode::<ShediaoToken>(token, &dummy_key, &validation)
             .context("Unable to decode jwt")?;
         let user = insecure_token.claims.sub;
-        trace!("Validating token for user {} with mozilla", user);
+        trace!("Validating token for user {} with shediao", user);
         if UNIX_EPOCH + Duration::from_secs(insecure_token.claims.exp) < SystemTime::now() {
             bail!("JWT expired")
         }
@@ -148,8 +148,8 @@ impl MozillaCheck {
         auth_cache.remove(token);
 
         debug!("User {} not in cache, validating via auth0 endpoint", user);
-        // Retrieve the groups from the auth0 /userinfo endpoint, which Mozilla rules populate with groups
-        // https://github.com/mozilla-iam/auth0-deploy/blob/6889f1dde12b84af50bb4b2e2f00d5e80d5be33f/rules/CIS-Claims-fixups.js#L158-L168
+        // Retrieve the groups from the auth0 /userinfo endpoint, which Shediao rules populate with groups
+        // https://github.com/shediao-iam/auth0-deploy/blob/6889f1dde12b84af50bb4b2e2f00d5e80d5be33f/rules/CIS-Claims-fixups.js#L158-L168
         let url = reqwest::Url::parse(MOZ_USERINFO_ENDPOINT)
             .expect("Failed to parse MOZ_USERINFO_ENDPOINT");
 
@@ -158,17 +158,17 @@ impl MozillaCheck {
             .get(url.clone())
             .bearer_auth(token)
             .send()
-            .context("Failed to make request to mozilla userinfo")?;
+            .context("Failed to make request to shediao userinfo")?;
         let status = res.status();
         let res_text = res
             .text()
-            .context("Failed to interpret response from mozilla userinfo as string")?;
+            .context("Failed to interpret response from shediao userinfo as string")?;
         if !status.is_success() {
             bail!("JWT forwarded to {} returned {}: {}", url, status, res_text)
         }
 
         // The API didn't return a HTTP error code, let's check the response
-        check_mozilla_profile(&user, &self.required_groups, &res_text)
+        check_shediao_profile(&user, &self.required_groups, &res_text)
             .with_context(|| format!("Validation of the user profile failed for {}", user))?;
 
         // Validation success, cache the token
@@ -178,11 +178,11 @@ impl MozillaCheck {
     }
 }
 
-fn check_mozilla_profile(user: &str, required_groups: &[String], profile: &str) -> Result<()> {
+fn check_shediao_profile(user: &str, required_groups: &[String], profile: &str) -> Result<()> {
     #[derive(Deserialize)]
     struct UserInfo {
         sub: String,
-        #[serde(rename = "https://sso.mozilla.com/claim/groups")]
+        #[serde(rename = "https://sso.shediao.com/claim/groups")]
         groups: Vec<String>,
     }
     let profile: UserInfo = serde_json::from_str(profile)
@@ -203,11 +203,11 @@ fn check_mozilla_profile(user: &str, required_groups: &[String], profile: &str) 
 }
 
 #[test]
-fn test_auth_verify_check_mozilla_profile() {
+fn test_auth_verify_check_shediao_profile() {
     // A successful response
     let profile = r#"{
-        "sub": "ad|Mozilla-LDAP|asayers",
-        "https://sso.mozilla.com/claim/groups": [
+        "sub": "ad|Shediao-LDAP|asayers",
+        "https://sso.shediao.com/claim/groups": [
             "everyone",
             "hris_dept_firefox",
             "hris_individual_contributor",
@@ -215,7 +215,7 @@ fn test_auth_verify_check_mozilla_profile() {
             "hris_is_staff",
             "hris_workertype_contractor"
         ],
-        "https://sso.mozilla.com/claim/README_FIRST": "Please refer to https://github.com/mozilla-iam/person-api in order to query Mozilla IAM CIS user profile data"
+        "https://sso.shediao.com/claim/README_FIRST": "Please refer to https://github.com/shediao-iam/person-api in order to query Shediao IAM CIS user profile data"
     }"#;
 
     // If the user has been deactivated since the token was issued. Note this may be partnered with an error code
@@ -225,21 +225,21 @@ fn test_auth_verify_check_mozilla_profile() {
         "error_description": "user is blocked"
     }"#;
 
-    assert!(check_mozilla_profile(
-        "ad|Mozilla-LDAP|asayers",
+    assert!(check_shediao_profile(
+        "ad|Shediao-LDAP|asayers",
         &["hris_dept_firefox".to_owned()],
         profile,
     )
     .is_ok());
-    assert!(check_mozilla_profile("ad|Mozilla-LDAP|asayers", &[], profile).is_ok());
-    assert!(check_mozilla_profile(
-        "ad|Mozilla-LDAP|asayers",
+    assert!(check_shediao_profile("ad|Shediao-LDAP|asayers", &[], profile).is_ok());
+    assert!(check_shediao_profile(
+        "ad|Shediao-LDAP|asayers",
         &["hris_the_ceo".to_owned()],
         profile,
     )
     .is_err());
 
-    assert!(check_mozilla_profile("ad|Mozilla-LDAP|asayers", &[], profile_fail).is_err());
+    assert!(check_shediao_profile("ad|Shediao-LDAP|asayers", &[], profile_fail).is_err());
 }
 
 // Don't check a token is valid (it may not even be a JWT) just forward it to

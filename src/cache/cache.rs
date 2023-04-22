@@ -1,4 +1,4 @@
-// Copyright 2016 Mozilla Foundation
+// Copyright 2016 Shediao Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -393,7 +393,7 @@ impl Storage for opendal::Operator {
     async fn check(&self) -> Result<CacheMode> {
         use opendal::ErrorKind;
 
-        let path = ".sccache_check";
+        let path = ".ccache_check";
 
         // Read is required, return error directly if we can't read .
         match self.object(path).read().await {
@@ -402,7 +402,7 @@ impl Storage for opendal::Operator {
             Err(err) if err.kind() == ErrorKind::ObjectNotFound => (),
             // Tricky Part.
             //
-            // We tolerate rate limited here to make sccache keep running.
+            // We tolerate rate limited here to make ccache keep running.
             // For the worse case, we will miss all the cache.
             //
             // In some super rare cases, user could configure storage in wrong

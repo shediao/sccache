@@ -1,4 +1,4 @@
-// Copyright 2016 Mozilla Foundation
+// Copyright 2016 Shediao Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,15 +55,15 @@ pub mod util;
 
 use std::env;
 
-/// VERSION is the pkg version of sccache.
+/// VERSION is the pkg version of ccache.
 ///
 /// This version is safe to be used in cache services to indicate the version
-/// that sccache ie.
+/// that ccache ie.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Used to denote the environment variable that controls
-/// logging for sccache, and sccache-dist.
-pub const LOGGING_ENV: &str = "SCCACHE_LOG";
+/// logging for ccache, and ccache-dist.
+pub const LOGGING_ENV: &str = "CCACHE_LOG";
 
 pub fn main() {
     init_logging();
@@ -74,9 +74,9 @@ pub fn main() {
             // If the error is from clap then let them handle formatting and exiting
             Ok(clap_err) => clap_err.exit(),
             Err(some_other_err) => {
-                println!("sccache: {some_other_err}");
+                println!("ccache: {some_other_err}");
                 for source in some_other_err.chain().skip(1) {
-                    println!("sccache: caused by: {source}");
+                    println!("ccache: caused by: {source}");
                 }
                 std::process::exit(1);
             }
@@ -86,9 +86,9 @@ pub fn main() {
     std::process::exit(match commands::run_command(command) {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("sccache: error: {}", e);
+            eprintln!("ccache: error: {}", e);
             for e in e.chain().skip(1) {
-                eprintln!("sccache: caused by: {}", e);
+                eprintln!("ccache: caused by: {}", e);
             }
             2
         }

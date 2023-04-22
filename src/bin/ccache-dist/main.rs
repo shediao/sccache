@@ -13,7 +13,7 @@ extern crate nix;
 extern crate openssl;
 extern crate rand;
 extern crate reqwest;
-extern crate sccache;
+extern crate ccache;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
@@ -24,18 +24,18 @@ extern crate void;
 use anyhow::{bail, Context, Error, Result};
 use base64::Engine;
 use rand::{rngs::OsRng, RngCore};
-use sccache::config::{
+use ccache::config::{
     scheduler as scheduler_config, server as server_config, INSECURE_DIST_CLIENT_TOKEN,
 };
-use sccache::dist::{
+use ccache::dist::{
     self, AllocJobResult, AssignJobResult, BuilderIncoming, CompileCommand, HeartbeatServerResult,
     InputsReader, JobAlloc, JobAuthorizer, JobComplete, JobId, JobState, RunJobResult,
     SchedulerIncoming, SchedulerOutgoing, SchedulerStatusResult, ServerId, ServerIncoming,
     ServerNonce, ServerOutgoing, SubmitToolchainResult, TcCache, Toolchain, ToolchainReader,
     UpdateJobStateResult,
 };
-use sccache::util::daemonize;
-use sccache::util::BASE64_URL_SAFE_ENGINE;
+use ccache::util::daemonize;
+use ccache::util::BASE64_URL_SAFE_ENGINE;
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet};
 use std::env;
 use std::io;
@@ -67,9 +67,9 @@ fn main() {
         Err(e) => match e.downcast::<clap::error::Error>() {
             Ok(clap_err) => clap_err.exit(),
             Err(some_other_err) => {
-                println!("sccache-dist: {some_other_err}");
+                println!("ccache-dist: {some_other_err}");
                 for source_err in some_other_err.chain().skip(1) {
-                    println!("sccache-dist: caused by: {source_err}");
+                    println!("ccache-dist: caused by: {source_err}");
                 }
                 std::process::exit(1);
             }
@@ -79,10 +79,10 @@ fn main() {
     std::process::exit(match run(command) {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("sccache-dist: error: {}", e);
+            eprintln!("ccache-dist: error: {}", e);
 
             for e in e.chain().skip(1) {
-                eprintln!("sccache-dist: caused by: {}", e);
+                eprintln!("ccache-dist: caused by: {}", e);
             }
             2
         }
@@ -180,8 +180,8 @@ fn run(command: Command) -> Result<i32> {
                     token_check::ValidJWTCheck::new(audience, issuer, &jwks_url)
                         .context("Failed to create a checker for valid JWTs")?,
                 ),
-                scheduler_config::ClientAuth::Mozilla { required_groups } => {
-                    Box::new(token_check::MozillaCheck::new(required_groups))
+                scheduler_config::ClientAuth::Shediao { required_groups } => {
+                    Box::new(token_check::ShediaoCheck::new(required_groups))
                 }
                 scheduler_config::ClientAuth::ProxyToken { url, cache_secs } => {
                     Box::new(token_check::ProxyTokenCheck::new(url, cache_secs))
@@ -293,22 +293,22 @@ fn run(command: Command) -> Result<i32> {
             };
 
             let server = Server::new(builder, &cache_dir, toolchain_cache_size)
-                .context("Failed to create sccache server instance")?;
+                .context("Failed to create ccache server instance")?;
             let http_server = dist::http::Server::new(
                 public_addr,
                 scheduler_url.to_url(),
                 scheduler_auth,
                 server,
             )
-            .context("Failed to create sccache HTTP server instance")?;
+            .context("Failed to create ccache HTTP server instance")?;
             void::unreachable(http_server.start()?)
         }
     }
 }
 
 fn init_logging() {
-    if env::var(sccache::LOGGING_ENV).is_ok() {
-        match env_logger::Builder::from_env(sccache::LOGGING_ENV).try_init() {
+    if env::var(ccache::LOGGING_ENV).is_ok() {
+        match env_logger::Builder::from_env(ccache::LOGGING_ENV).try_init() {
             Ok(_) => (),
             Err(e) => panic!("Failed to initialize logging: {:?}", e),
         }

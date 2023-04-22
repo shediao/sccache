@@ -1,5 +1,5 @@
 // Copyright 2022 <LovecraftianHorror@pm.me>
-// Copyright 2016 Mozilla Foundation
+// Copyright 2016 Shediao Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use sccache::{config, dist::ServerId};
+use ccache::{config, dist::ServerId};
 
 mod parse;
 

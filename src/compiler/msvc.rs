@@ -1,4 +1,4 @@
-// Copyright 2016 Mozilla Foundation
+// Copyright 2016 Shediao Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -364,7 +364,7 @@ msvc_args!(static ARGS: [ArgInfo<ArgData>; _] = [
     msvc_take_arg!("Fi", PathBuf, Concatenated, TooHardPath),
     msvc_take_arg!("Fm", PathBuf, Concatenated, PassThroughWithPath), // No effect if /c is specified.
     msvc_take_arg!("Fo", PathBuf, Concatenated, Output),
-    msvc_take_arg!("Fp", PathBuf, Concatenated, TooHardPath), // allows users to specify the name for a PCH (when using /Yu or /Yc), PCHs are not supported in sccache.
+    msvc_take_arg!("Fp", PathBuf, Concatenated, TooHardPath), // allows users to specify the name for a PCH (when using /Yu or /Yc), PCHs are not supported in ccache.
     msvc_take_arg!("Fr", PathBuf, Concatenated, TooHardPath),
     msvc_flag!("Fx", TooHardFlag),
     msvc_flag!("GA", PassThrough),
@@ -662,8 +662,8 @@ pub fn parse_arguments(
             //
             // -FS forces synchronous access to PDB files via a MSPDBSRV process.
             // This option is only useful when multiple compiler invocations are going
-            // to share the same PDB file, which is not supported by sccache. So either
-            // -Fd was passed with a pdb that is not shared and sccache is going to
+            // to share the same PDB file, which is not supported by ccache. So either
+            // -Fd was passed with a pdb that is not shared and ccache is going to
             // handle the compile, in which case -FS is not needed, or -Fd was not passed
             // and we're going to bail out and not cache.
             //
@@ -1058,7 +1058,7 @@ fn generate_compile_commands(
         // It's important to avoid preprocessor_args because of things like /FI which
         // forcibly includes another file. This does mean we're potentially vulnerable
         // to misidentification of flags like -DYNAMICBASE (though in that specific
-        // case we're safe as it only applies to link time, which sccache avoids).
+        // case we're safe as it only applies to link time, which ccache avoids).
         arguments.extend(dist::osstrings_to_strings(&parsed_args.common_args)?);
 
         Some(dist::CompileCommand {
@@ -1849,7 +1849,7 @@ mod test {
     #[test]
     fn test_responsefile_absolute_path() {
         let td = tempfile::Builder::new()
-            .prefix("sccache")
+            .prefix("ccache")
             .tempdir()
             .unwrap();
         let cmd_file_path = td.path().join("foo");
@@ -1893,7 +1893,7 @@ mod test {
         // Generate the tempdir in the currentdir so we can use a relative path in this test.
         // MSVC allows relative paths to response files, so we must support that.
         let td = tempfile::Builder::new()
-            .prefix("sccache")
+            .prefix("ccache")
             .tempdir_in("./")
             .unwrap();
         let relative_to_tmp = td
@@ -1939,7 +1939,7 @@ mod test {
     #[test]
     fn test_responsefile_with_quotes() {
         let td = tempfile::Builder::new()
-            .prefix("sccache")
+            .prefix("ccache")
             .tempdir()
             .unwrap();
         let cmd_file_path = td.path().join("foo");
@@ -1981,7 +1981,7 @@ mod test {
     #[test]
     fn test_responsefile_multiline() {
         let td = tempfile::Builder::new()
-            .prefix("sccache")
+            .prefix("ccache")
             .tempdir()
             .unwrap();
         let cmd_file_path = td.path().join("foo");
@@ -2023,7 +2023,7 @@ mod test {
     #[test]
     fn test_responsefile_encoding_utf16le() {
         let td = tempfile::Builder::new()
-            .prefix("sccache")
+            .prefix("ccache")
             .tempdir()
             .unwrap();
         let cmd_file_path = td.path().join("foo");

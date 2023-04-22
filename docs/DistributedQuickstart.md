@@ -1,27 +1,27 @@
-sccache distributed compilation quickstart
+ccache distributed compilation quickstart
 ==========================================
 
-This is a quick start guide to getting distributed compilation working with sccache. This guide primarily covers Linux clients.
+This is a quick start guide to getting distributed compilation working with ccache. This guide primarily covers Linux clients.
 macOS and Windows clients are supported but have seen significantly less testing.
 
-Get sccache binaries
+Get ccache binaries
 --------------------
 
-Either [install pre-built sccache binaries](https://github.com/mozilla/sccache#installation), or build sccache locally with the `dist-client` and `dist-server` features enabled:
+Either [install pre-built ccache binaries](https://github.com/shediao/ccache#installation), or build ccache locally with the `dist-client` and `dist-server` features enabled:
 ```
 cargo build --release --features="dist-client dist-server"
 ```
 
-The `target/release/sccache` binary will be used on the client, and the `target/release/sccache-dist` binary will be used on the scheduler and build server.
+The `target/release/ccache` binary will be used on the client, and the `target/release/ccache-dist` binary will be used on the scheduler and build server.
 
-If you're only planning to use the client, it is enabled by default, so just `cargo install sccache` should do the trick.
+If you're only planning to use the client, it is enabled by default, so just `cargo install ccache` should do the trick.
 
 Configure a scheduler
 ---------------------
 
 If you're adding a server to a cluster that has already been set up, skip ahead to [configuring a build server](#configure-a-build-server).
 
-The scheduler is a daemon that manages compile request from clients and parcels them out to build servers. You only need one of these per sccache setup. Currently only Linux is supported for running the scheduler.
+The scheduler is a daemon that manages compile request from clients and parcels them out to build servers. You only need one of these per ccache setup. Currently only Linux is supported for running the scheduler.
 
 Create a scheduler.conf file to configure client/server authentication. A minimal example looks like:
 ```toml
@@ -38,31 +38,31 @@ type = "jwt_hs256"
 secret_key = "my secret key"
 ```
 
-Mozilla build servers will typically require clients to be authenticated with the
-[Mozilla identity system](https://github.com/mozilla-iam/mozilla-iam).
+Shediao build servers will typically require clients to be authenticated with the
+[Shediao identity system](https://github.com/shediao-iam/shediao-iam).
 
 To configure for scheduler for this, the `client_auth` section should be as follows
-so any client tokens are validated with the Mozilla service:
+so any client tokens are validated with the Shediao service:
 
 ```
 [client_auth]
-type = "mozilla"
+type = "shediao"
 required_groups = ["group_name"]
 ```
 
-Where `group_name` is a Mozilla LDAP group. Users will be required to belong to this group to successfully authenticate with the scheduler.
+Where `group_name` is a Shediao LDAP group. Users will be required to belong to this group to successfully authenticate with the scheduler.
 
 Start the scheduler by running:
 ```
-sccache-dist scheduler --config scheduler.conf
+ccache-dist scheduler --config scheduler.conf
 ```
 
-Like the local server, the scheduler process will daemonize itself unless `SCCACHE_NO_DAEMON=1` is set. If the scheduler fails to start you may need to set `SCCACHE_LOG=trace` when starting it to get useful diagnostics.
+Like the local server, the scheduler process will daemonize itself unless `CCACHE_NO_DAEMON=1` is set. If the scheduler fails to start you may need to set `CCACHE_LOG=trace` when starting it to get useful diagnostics.
 
 Configure a build server
 ------------------------
 
-A build server communicates with the scheduler and executes compiles requested by clients. Only Linux is supported for running a build server, but executing cross-compile requests from macOS/Windows clients is supported. You can also run a build server on FreeBSD, please see [distributed sccache on FreeBSD](DistributedFreeBSD.md).
+A build server communicates with the scheduler and executes compiles requested by clients. Only Linux is supported for running a build server, but executing cross-compile requests from macOS/Windows clients is supported. You can also run a build server on FreeBSD, please see [distributed ccache on FreeBSD](DistributedFreeBSD.md).
 
 The build server requires [bubblewrap](https://github.com/projectatomic/bubblewrap) to sandbox execution, at least version 0.3.0. Verify your version of bubblewrap *before* attempting to run the server. On Ubuntu 18.10+ you can `apt install bubblewrap` to install it. If you build from source you will need to first install your distro's equivalent of the `libcap-dev` package.
 
@@ -89,25 +89,25 @@ bwrap_path = "/usr/bin/bwrap"
 [scheduler_auth]
 type = "jwt_token"
 # This will be generated by the `generate-jwt-hs256-server-token` command or
-# provided by an administrator of the sccache cluster.
+# provided by an administrator of the ccache cluster.
 token = "my server's token"
 ```
 
 Due to bubblewrap requirements currently the build server *must* be run as root. Start the build server by running:
 ```
-sudo sccache-dist server --config server.conf
+sudo ccache-dist server --config server.conf
 ```
 
-As with the scheduler, if the build server fails to start you may need to set `SCCACHE_LOG=trace` to get useful diagnostics.
+As with the scheduler, if the build server fails to start you may need to set `CCACHE_LOG=trace` to get useful diagnostics.
 
 Configure a client
 ------------------
 
-A client uses `sccache` to wrap compile commands, communicates with the scheduler to find available build servers, and communicates with build servers to execute the compiles and receive the results.
+A client uses `ccache` to wrap compile commands, communicates with the scheduler to find available build servers, and communicates with build servers to execute the compiles and receive the results.
 
 Clients that are not targeting linux64 require the `icecc-create-env` script or should be provided with an archive. `icecc-create-env` is part of `icecream` for packaging toolchains. You can install icecream to get this script (`apt install icecc` on Ubuntu), or download it from the git repository and place it in your `PATH`: `curl https://raw.githubusercontent.com/icecc/icecream/master/client/icecc-create-env.in > icecc-create-env && chmod +x icecc-create-env`. See [using custom toolchains](#using-custom-toolchains).
 
-Create a client config file in `~/.config/sccache/config` (on Linux), `~/Library/Application Support/Mozilla.sccache/config` (on macOS), or `%APPDATA%\Mozilla\sccache\config\config` (on Windows). A minimal example looks like:
+Create a client config file in `~/.config/ccache/config` (on Linux), `~/Library/Application Support/Shediao.ccache/config` (on macOS), or `%APPDATA%\Shediao\ccache\config\config` (on Windows). A minimal example looks like:
 ```toml
 [dist]
 # The URL used to connect to the scheduler (should use https, given an ideal
@@ -125,25 +125,25 @@ type = "token"
 token = "my client token"
 ```
 
-Clients using Mozilla build servers should configure their `dist.auth` section as follows:
+Clients using Shediao build servers should configure their `dist.auth` section as follows:
 
 ```
 [dist.auth]
-type = "mozilla"
+type = "shediao"
 ```
 
-And retrieve a token from the Mozilla identity service by running `sccache --dist-auth`
+And retrieve a token from the Shediao identity service by running `ccache --dist-auth`
 and following the instructions. Completing this process will retrieve and cache a token
 valid for 7 days.
 
-Make sure to run `sccache --stop-server` and `sccache --start-server` if sccache was
+Make sure to run `ccache --stop-server` and `ccache --start-server` if ccache was
 running before changing the configuration.
 
-You can check the status with `sccache --dist-status`, it should say something like:
+You can check the status with `ccache --dist-status`, it should say something like:
 
 ```
-$ sccache --dist-status
-{"SchedulerStatus":["https://sccache1.corpdmz.ber3.mozilla.com/",{"num_servers":3,"num_cpus":56,"in_progress":24}]}
+$ ccache --dist-status
+{"SchedulerStatus":["https://ccache1.corpdmz.ber3.shediao.com/",{"num_servers":3,"num_cpus":56,"in_progress":24}]}
 ```
 
 Using custom toolchains
@@ -177,7 +177,7 @@ archive_compiler_executable = "/builds/worker/toolchains/clang/bin/clang"
 ```
 
 Where:
- - `compiler_executable` identifies the path that sccache will match against to activate
+ - `compiler_executable` identifies the path that ccache will match against to activate
    this configuration (you need to be careful on Windows - paths can have slashes in both
    directions, and you may need to escape backslashes, as in the example)
  - `archive` is the compressed tar archive containing the compiler toolchain to distribute
@@ -188,11 +188,11 @@ Where:
 A toolchain archive should be a Gzip compressed TAR archive, containing a filesystem
 sufficient to run the compiler without relying on any external files. If you have archives
 compatible with icecream (created with `icecc-create-env`, like
-[these ones](https://github.com/jyavenard/mozilla-icecream) for macOS), they should also work
-with sccache. To create a Windows toolchain, it is recommended that you download the [Clang
+[these ones](https://github.com/jyavenard/shediao-icecream) for macOS), they should also work
+with ccache. To create a Windows toolchain, it is recommended that you download the [Clang
 binaries for Ubuntu 16.04](http://releases.llvm.org/download.html) and extract them,
 package up the toolchain using the extracted `bin/clang` file (requires
-[PR #321](https://github.com/mozilla/sccache/pull/321)) and then insert `bin/clang-cl` at
+[PR #321](https://github.com/shediao/ccache/pull/321)) and then insert `bin/clang-cl` at
 the appropriate path as a symlink to the `bin/clang` binary.
 
 Considerations when distributing from macOS
@@ -206,8 +206,8 @@ may be required:
 - An explicit toolchain archive will need to be configured, as described above.
   In case rust is being cached, the same version of `rustc` will need to be used
   for local compiles as is found in the distributed archive.
-- The client config will be read from `~/Library/Application Support/Mozilla.sccache/config`,
-  not `~/.config/sccache/config`.
+- The client config will be read from `~/Library/Application Support/Shediao.ccache/config`,
+  not `~/.config/ccache/config`.
 - Some cross compilers may not understand some intrinsics used in more recent macOS
   SDKs. The 10.11 SDK is known to work.
 
@@ -216,33 +216,33 @@ Making a build server start at boot time
 
 It is very easy with a systemd service to spawn the server on boot.
 
-You can create a service file like `/etc/systemd/system/sccache-server.service`
+You can create a service file like `/etc/systemd/system/ccache-server.service`
 with the following contents:
 
 ```ini
 [Unit]
-Description=sccache-dist server
+Description=ccache-dist server
 Wants=network-online.target
 After=network-online.target
 
 [Service]
-ExecStart=/path/to/sccache-dist server --config /path/to/server.conf
+ExecStart=/path/to/ccache-dist server --config /path/to/server.conf
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-**Note** that if the `sccache-dist` binary is in a user's home directory, and
+**Note** that if the `ccache-dist` binary is in a user's home directory, and
 you're in a distro with SELinux enabled (like Fedora), you may need to use an
 `ExecStart` line like:
 
 ```ini
-ExecStart=/bin/bash -c "/home/<user>/path/to/sccache-dist server --config /home/<user>/path/to/server.conf"
+ExecStart=/bin/bash -c "/home/<user>/path/to/ccache-dist server --config /home/<user>/path/to/server.conf"
 ```
 
 This is because SELinux by default prevents services from running binaries in
 home directories, for some reason. Using a shell works around that. An
-alternative would be to move the `sccache-dist` binary to somewhere like
+alternative would be to move the `ccache-dist` binary to somewhere like
 `/usr/local/bin`, but then you need to remember to update it manually.
 
 After creating that file, you can ensure it's working and enable it by default
@@ -250,7 +250,7 @@ like:
 
 ```
 # systemctl daemon-reload
-# systemctl start sccache-server
+# systemctl start ccache-server
 # systemctl status # And check it's fine.
-# systemctl enable sccache-server # This enables the service on boot
+# systemctl enable ccache-server # This enables the service on boot
 ```

@@ -1,5 +1,5 @@
 // Copyright 2022 <LovecraftianHorror@pm.me>
-// Copyright 2016 Mozilla Foundation
+// Copyright 2016 Shediao Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ use std::{env, ffi::OsString, fmt, net::SocketAddr, path::PathBuf, str::FromStr}
 
 use anyhow::{anyhow, bail};
 use clap::{Arg, ArgGroup, Command as ClapCommand, ValueEnum};
-use sccache::{config, dist::ServerId};
+use ccache::{config, dist::ServerId};
 use syslog::Facility;
 
 use crate::cmdline::{AuthSubcommand, Command};
@@ -219,7 +219,7 @@ pub fn try_parse_from(
                 let log_level = matches
                     .get_one::<LogLevel>("syslog")
                     .expect("`syslog` is required");
-                check_init_syslog("sccache-scheduler", *log_level);
+                check_init_syslog("ccache-scheduler", *log_level);
             }
 
             let config_path = matches
@@ -236,7 +236,7 @@ pub fn try_parse_from(
                 let log_level = matches
                     .get_one::<LogLevel>("syslog")
                     .expect("`syslog` is required");
-                check_init_syslog("sccache-buildserver", *log_level);
+                check_init_syslog("ccache-buildserver", *log_level);
             }
 
             let config_path = matches
@@ -256,7 +256,7 @@ pub fn try_parse_from(
 mod tests {
     use super::*;
 
-    const EXE: &str = "sccache-dist";
+    const EXE: &str = "ccache-dist";
 
     fn auth_generate_shared_tokens_bits(bit_val: &'static str) -> Vec<&'static str> {
         vec![EXE, "auth", "generate-shared-token", "--bits", bit_val]

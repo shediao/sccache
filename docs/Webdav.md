@@ -1,6 +1,6 @@
 # WebDAV
 
-Set `SCCACHE_WEBDAV_ENDPOINT` to a wevdav service endpoint to store cache in a webdav service. Set `SCCACHE_WEBDAV_KEY_PREFIX` to specify the key prefix of cache.
+Set `CCACHE_WEBDAV_ENDPOINT` to a wevdav service endpoint to store cache in a webdav service. Set `CCACHE_WEBDAV_KEY_PREFIX` to specify the key prefix of cache.
 
 The webdav cache is compatible with:
 
@@ -8,4 +8,4 @@ The webdav cache is compatible with:
 - [Bazel Remote Caching](https://bazel.build/remote/caching).
 - [Gradle Build Cache](https://docs.gradle.org/current/userguide/build_cache.html)
 
-Users can set `SCCACHE_WEBDAV_ENDPOINT` to those services directly.
+Users can set `CCACHE_WEBDAV_ENDPOINT` to those services directly.

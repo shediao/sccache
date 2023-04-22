@@ -1,4 +1,4 @@
-// Copyright 2016 Mozilla Foundation
+// Copyright 2016 Shediao Foundation
 // Copyright 2016 Felix Obenhuber <felix@obenhuber.de>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");

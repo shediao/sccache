@@ -1,4 +1,4 @@
-// Copyright 2016 Mozilla Foundation
+// Copyright 2016 Shediao Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ use crate::client::connect_to_server;
 use crate::commands::{do_compile, request_shutdown, request_stats};
 use crate::jobserver::Client;
 use crate::mock_command::*;
-use crate::server::{DistClientContainer, SccacheServer, ServerMessage};
+use crate::server::{DistClientContainer, CcacheServer, ServerMessage};
 use crate::test::utils::*;
 use fs::File;
 use fs_err as fs;
@@ -82,8 +82,8 @@ where
         let storage = Arc::new(DiskCache::new(&cache_dir, cache_size, runtime.handle()));
 
         let client = unsafe { Client::new() };
-        let srv = SccacheServer::new(0, runtime, client, dist_client, storage).unwrap();
-        let mut srv: SccacheServer<Arc<Mutex<MockCommandCreator>>> = srv;
+        let srv = CcacheServer::new(0, runtime, client, dist_client, storage).unwrap();
+        let mut srv: CcacheServer<Arc<Mutex<MockCommandCreator>>> = srv;
         assert!(srv.port() > 0);
         if let Some(options) = options {
             if let Some(timeout) = options.idle_timeout {
@@ -156,7 +156,7 @@ fn test_server_stats() {
     // Ask it for stats.
     let info = request_stats(conn).unwrap();
     assert_eq!(0, info.stats.compile_requests);
-    // Include sccache ver (cli) to validate.
+    // Include ccache ver (cli) to validate.
     assert_eq!(env!("CARGO_PKG_VERSION"), info.version);
     // Now signal it to shut down.
     sender.send(ServerMessage::Shutdown).ok().unwrap();
@@ -284,16 +284,16 @@ fn test_server_compile() {
 #[test]
 #[serial]
 // test fails intermittently on macos:
-// https://github.com/mozilla/sccache/issues/234
+// https://github.com/shediao/ccache/issues/234
 #[cfg(not(target_os = "macos"))]
 fn test_server_port_in_use() {
     // Bind an arbitrary free port.
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-    let sccache = find_sccache_binary();
-    let output = Command::new(&sccache)
+    let ccache = find_ccache_binary();
+    let output = Command::new(&ccache)
         .arg("--start-server")
         .env(
-            "SCCACHE_SERVER_PORT",
+            "CCACHE_SERVER_PORT",
             listener.local_addr().unwrap().port().to_string(),
         )
         .output()

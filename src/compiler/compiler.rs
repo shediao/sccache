@@ -1,4 +1,4 @@
-// Copyright 2016 Mozilla Foundation
+// Copyright 2016 Shediao Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -870,7 +870,7 @@ pub async fn write_temp_file(
 ) -> Result<(TempDir, PathBuf)> {
     let path = path.to_owned();
     pool.spawn_blocking(move || {
-        let dir = tempfile::Builder::new().prefix("sccache").tempdir()?;
+        let dir = tempfile::Builder::new().prefix("ccache").tempdir()?;
         let src = dir.path().join(path);
         let mut file = File::create(&src)?;
         file.write_all(&contents)?;
@@ -912,8 +912,8 @@ where
     let rustc_executable = if is_rustc_like(executable) {
         Some(executable.to_path_buf())
     } else if env.iter().any(|(k, _)| k == OsStr::new("CARGO")) {
-        // If not, detect the scenario where cargo is configured to wrap rustc with something other than sccache.
-        // This happens when sccache is used as a `RUSTC_WRAPPER` and another tool is used as a
+        // If not, detect the scenario where cargo is configured to wrap rustc with something other than ccache.
+        // This happens when ccache is used as a `RUSTC_WRAPPER` and another tool is used as a
         // `RUSTC_WORKSPACE_WRAPPER`. In that case rustc will be the first argument rather than the command.
         //
         // The check for the `CARGO` env acts as a guardrail against false positives.

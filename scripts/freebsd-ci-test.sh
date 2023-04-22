@@ -3,7 +3,7 @@
 # This script contains CI tests for FreeBSD, testing
 #
 # - cargo build & cargo test
-# - configure and start sccache-dist and scheduler
+# - configure and start ccache-dist and scheduler
 # - test distributed compile
 # - test that the cache is used
 #
@@ -11,7 +11,7 @@
 # file (using mdconfig) and does a full configuration
 # of pot.
 #
-# After running it copies the sccache log file into
+# After running it copies the ccache log file into
 # the repo's root directory. It also does a full
 # cleanup (removal of all temporary files, test pool
 # etc.) after each run. This can be prevented by
@@ -41,13 +41,13 @@ init()
 	base=$(realpath "$(dirname "$0")"/..)
 	OS_VERSION="$(freebsd-version | awk -F- '{print $1}')"
 	PUB_INTF="$(netstat -4rn | grep default | awk '{ print $4}')"
-	TEST_TMPDIR=$(mktemp -d "/tmp/sccache_freebsd.XXXXXXX") || exit 1
+	TEST_TMPDIR=$(mktemp -d "/tmp/ccache_freebsd.XXXXXXX") || exit 1
 	chmod g+r "$TEST_TMPDIR"
 	export XDG_CONFIG_HOME="$TEST_TMPDIR/.config"
 	mkdir -p "$XDG_CONFIG_HOME"
-	export SCCACHE_DIR="$TEST_TMPDIR/.cache"
-	killall sccache 2>/dev/null || true
-	killall sccache-dist 2>/dev/null || true
+	export CCACHE_DIR="$TEST_TMPDIR/.cache"
+	killall ccache 2>/dev/null || true
+	killall ccache-dist 2>/dev/null || true
 	export RUST_LOG_STYLE=never
 }
 
@@ -72,27 +72,27 @@ output_env_info()
 
 build_and_test_project()
 {
-	echo "#### building sccache (cargo)"
+	echo "#### building ccache (cargo)"
 	cd "$base"
 	FAULT=0
 	export RUSTFLAGS="-C debuginfo=0"
 	cargo build --features "dist-client,dist-server" || FAULT=1
-	echo "#### testing sccache (cargo)"
+	echo "#### testing ccache (cargo)"
 	cargo test --features "dist-client,dist-server" || FAULT=1
 	unset RUSTFLAGS
 	if [ "$FAULT" -eq 0 ]; then
 		# save build time by avoiding "cargo install"
-		cp -a target/debug/sccache target/debug/sccache-dist \
+		cp -a target/debug/ccache target/debug/ccache-dist \
 		  "$HOME/.cargo/bin/."
 	fi
 	if [ $FAULT -ne 0 ]; then return 1; fi
 }
 
-prepare_and_run_sccache_dist()
+prepare_and_run_ccache_dist()
 {
-	echo "#### preparing sccache-dist"
-	SECRET_KEY="$(sccache-dist auth generate-jwt-hs256-key)"
-	CLIENT_AUTH_KEY="$(sccache-dist auth generate-jwt-hs256-key)"
+	echo "#### preparing ccache-dist"
+	SECRET_KEY="$(ccache-dist auth generate-jwt-hs256-key)"
+	CLIENT_AUTH_KEY="$(ccache-dist auth generate-jwt-hs256-key)"
 	# create scheduler.conf
 	cat >"$TEST_TMPDIR"/scheduler.conf <<-EOF
 	public_addr = "127.0.0.1:10600"
@@ -103,7 +103,7 @@ prepare_and_run_sccache_dist()
 	type = "jwt_hs256"
 	secret_key = "$SECRET_KEY"
 	EOF
-	SERVER_TOKEN="$(sccache-dist auth generate-jwt-hs256-server-token \
+	SERVER_TOKEN="$(ccache-dist auth generate-jwt-hs256-server-token \
 	  --config="$TEST_TMPDIR"/scheduler.conf \
 	  --server="127.0.0.1:10501")"
 
@@ -120,15 +120,15 @@ prepare_and_run_sccache_dist()
 	token = "$SERVER_TOKEN"
 	EOF
 
-	# create sccache client config
+	# create ccache client config
 	TC="$(rustup toolchain list | grep default | awk '{ print $1 }')"
 	RUSTC_PATH="$HOME/.rustup/toolchains/$TC/bin/rustc"
-	mkdir -p "$XDG_CONFIG_HOME/sccache"
-	cat >"$XDG_CONFIG_HOME/sccache/config" <<-EOF
+	mkdir -p "$XDG_CONFIG_HOME/ccache"
+	cat >"$XDG_CONFIG_HOME/ccache/config" <<-EOF
 	[dist]
 	scheduler_url = "http://127.0.0.1:10600"
 	toolchain_cache_size = 5368709120
-	cache_dir = "$HOME/.cache/sccache-dist-client"
+	cache_dir = "$HOME/.cache/ccache-dist-client"
 	[dist.auth]
 	type = "token"
 	token = "$CLIENT_AUTH_KEY"
@@ -151,7 +151,7 @@ prepare_and_run_sccache_dist()
 	  gzip -n >"$TEST_TMPDIR/rust-toolchain.tgz"
 
 	echo "Starting scheduler"
-	sccache-dist scheduler --config "$TEST_TMPDIR"/scheduler.conf
+	ccache-dist scheduler --config "$TEST_TMPDIR"/scheduler.conf
 }
 
 prepare_zpool()
@@ -175,18 +175,18 @@ prepare_pot()
 	sudo pot init -f ""
 	sudo pot version
 	sudo cp "$HOME"/.potcache/*.txz /var/cache/pot 2>/dev/null || true
-	sudo pot create -p sccache-template -N alias -i "lo0|127.0.0.2" \
+	sudo pot create -p ccache-template -N alias -i "lo0|127.0.0.2" \
 	  -t single -b "$OS_VERSION"
-	sudo pot set-cmd -p sccache-template -c /usr/bin/true
-	sudo pot set-attr -p sccache-template -A no-rc-script -V YES
-	sudo pot snapshot -p sccache-template
+	sudo pot set-cmd -p ccache-template -c /usr/bin/true
+	sudo pot set-attr -p ccache-template -A no-rc-script -V YES
+	sudo pot snapshot -p ccache-template
 }
 
 start_build_server()
 {
 	echo "#### starting build-server (as root)"
-	SCCACHE_DIST_LOG=debug RUST_LOG=info sudo \
-	  "$HOME"/.cargo/bin/sccache-dist server \
+	CCACHE_DIST_LOG=debug RUST_LOG=info sudo \
+	  "$HOME"/.cargo/bin/ccache-dist server \
 	  --config "$TEST_TMPDIR"/server.conf &
 }
 
@@ -213,21 +213,21 @@ create_build_test_project()
 	echo 'chrono = "0.4"' >>Cargo.toml
 }
 
-start_sccache_server()
+start_ccache_server()
 {
-	echo "#### starting sccache-server"
-	killall sccache 2>/dev/null || true
-	SCCACHE_ERROR_LOG="$TEST_TMPDIR"/sccache_log.txt SCCACHE_LOG=info \
-	  RUST_LOG=info sccache --start-server
+	echo "#### starting ccache-server"
+	killall ccache 2>/dev/null || true
+	CCACHE_ERROR_LOG="$TEST_TMPDIR"/ccache_log.txt CCACHE_LOG=info \
+	  RUST_LOG=info ccache --start-server
 	sleep 10
 }
 
-test_sccache_dist_01()
+test_ccache_dist_01()
 {
 	echo "#### running scache_dist test 01"
 	cd "$TEST_TMPDIR/buildtest"
-	RUSTC_WRAPPER=sccache cargo build
-	STATS="$(sccache -s)"
+	RUSTC_WRAPPER=ccache cargo build
+	STATS="$(ccache -s)"
 	echo "Statistics of first buildtest"
 	echo "$STATS"
 	CACHE_HITS="$(echo "$STATS" | \
@@ -242,12 +242,12 @@ test_sccache_dist_01()
 		return 1
 	fi
 	# We sometimes get "connection closed before message completed"
-	# on the first remote build (which will make sccache fall-back
+	# on the first remote build (which will make ccache fall-back
 	# to building locally). Until this has been resolved, accept
 	# one failed remote build.
 	if [ "$FAILED_DIST" -gt 1 ]; then
 		2>&1 echo "More than one distributed compilations failed"
-		cat "$TEST_TMPDIR"/sccache_log.txt
+		cat "$TEST_TMPDIR"/ccache_log.txt
 		return 1
 	fi
 	if [ "$SUCCEEDED_DIST" -eq 0 ]; then
@@ -256,14 +256,14 @@ test_sccache_dist_01()
 	fi
 }
 
-test_sccache_dist_02()
+test_ccache_dist_02()
 {
 	echo "#### running scache_dist test 02"
 	cd "$TEST_TMPDIR/buildtest"
-	sccache -z
+	ccache -z
 	cargo clean
-	RUSTC_WRAPPER=sccache cargo build
-	STATS="$(sccache -s)"
+	RUSTC_WRAPPER=ccache cargo build
+	STATS="$(ccache -s)"
 	echo "Statistics of second buildtest"
 	echo "$STATS"
 	CACHE_HITS="$(echo "$STATS" | \
@@ -278,7 +278,7 @@ test_sccache_dist_02()
 		return 1
 	fi
 	# We sometimes get "connection closed before message completed"
-	# on the first remote build (which will make sccache fall-back
+	# on the first remote build (which will make ccache fall-back
 	# to building locally). Until this has been resolved, accept
 	# one failed remote build.
 	if [ "$FAILED_DIST" -gt 1 ]; then
@@ -295,13 +295,13 @@ cleanup()
 {
 	echo "#### cleaning up"
 	set +e
-	sccache --stop-server
-	killall sccache
-	killall sccache-dist && sleep 3
-	sudo killall sccache-dist && sleep 3
-	sudo killall -9 sccache-dist
-	killall sccache
-	cp "$TEST_TMPDIR/sccache_log.txt" "$base/sccache_log_$(date +%s).txt"
+	ccache --stop-server
+	killall ccache
+	killall ccache-dist && sleep 3
+	sudo killall ccache-dist && sleep 3
+	sudo killall -9 ccache-dist
+	killall ccache
+	cp "$TEST_TMPDIR/ccache_log.txt" "$base/ccache_log_$(date +%s).txt"
 	if [ -z "$FREEBSD_CI_NOCLEAN" ]; then
 		for name in $(pot ls -q); do
 			sudo pot stop -p "$name"
@@ -332,15 +332,15 @@ main()
 	init
 	output_env_info
 	build_and_test_project
-	prepare_and_run_sccache_dist
+	prepare_and_run_ccache_dist
 	prepare_zpool
 	prepare_pot
 	start_build_server
 	wait_for_build_server
 	create_build_test_project
-	start_sccache_server
-	test_sccache_dist_01
-	test_sccache_dist_02
+	start_ccache_server
+	test_ccache_dist_01
+	test_ccache_dist_02
 	remove_signal_handler
 	cleanup
 }

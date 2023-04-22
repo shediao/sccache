@@ -1,4 +1,4 @@
-// Copyright 2017 Mozilla Foundation
+// Copyright 2017 Shediao Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -252,7 +252,7 @@ where
 
 /// Run `command`, writing `input` to its stdin if it is `Some` and return the exit status and output.
 ///
-/// If the command returns a non-successful exit status, an error of `SccacheError::ProcessError`
+/// If the command returns a non-successful exit status, an error of `CcacheError::ProcessError`
 /// will be returned containing the process output.
 pub async fn run_input_output<C>(mut command: C, input: Option<Vec<u8>>) -> Result<process::Output>
 where
@@ -423,7 +423,7 @@ pub fn daemonize() -> Result<()> {
     use std::env;
     use std::mem;
 
-    match env::var("SCCACHE_NO_DAEMON") {
+    match env::var("CCACHE_NO_DAEMON") {
         Ok(ref val) if val == "1" => {}
         _ => {
             Daemonize::new().start().context("failed to daemonize")?;
@@ -440,7 +440,7 @@ pub fn daemonize() -> Result<()> {
     // rlimit to allow runtime dumps and we also install a signal handler for
     // segfaults which at least prints out what just happened.
     unsafe {
-        match env::var("SCCACHE_ALLOW_CORE_DUMPS") {
+        match env::var("CCACHE_ALLOW_CORE_DUMPS") {
             Ok(ref val) if val == "1" => {
                 let rlim = libc::rlimit {
                     rlim_cur: libc::RLIM_INFINITY,
@@ -508,12 +508,12 @@ pub fn daemonize() -> Result<()> {
 ///
 /// # TODO
 ///
-/// We should refactor sccache current model to make sure that we only have
+/// We should refactor ccache current model to make sure that we only have
 /// one tokio runtime and keep reqwest alive inside it.
 ///
 /// ---
 ///
-/// More details could be found at https://github.com/mozilla/sccache/pull/1563
+/// More details could be found at https://github.com/shediao/ccache/pull/1563
 #[cfg(any(feature = "dist-server", feature = "dist-client"))]
 pub fn new_reqwest_blocking_client() -> reqwest::blocking::Client {
     reqwest::blocking::Client::builder()

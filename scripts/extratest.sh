@@ -64,7 +64,7 @@ if [ "$1" = checkall ]; then
 
 
 elif [ "$1" = test ]; then
-    # Musl tests segfault due to https://github.com/mozilla/sccache/issues/256#issuecomment-399254715
+    # Musl tests segfault due to https://github.com/shediao/ccache/issues/256#issuecomment-399254715
     gnutarget
     VERBOSE=
     NOCAPTURE=
@@ -75,7 +75,7 @@ elif [ "$1" = test ]; then
     #NOCAPTURE=--nocapture
     TESTTHREADS="--test-threads 1"
 
-    # Since integration tests start up the sccache server they must be run sequentially. This only matters
+    # Since integration tests start up the ccache server they must be run sequentially. This only matters
     # if you have multiple test functions in one file.
 
     set +x

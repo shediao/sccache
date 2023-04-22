@@ -1,4 +1,4 @@
-//! Tests for sccache args.
+//! Tests for ccache args.
 //!
 //! Any copyright is dedicated to the Public Domain.
 //! http://creativecommons.org/publicdomain/zero/1.0/
@@ -14,53 +14,53 @@ use std::process::{Command, Stdio};
 #[macro_use]
 extern crate log;
 
-static SCCACHE_BIN: Lazy<PathBuf> = Lazy::new(|| assert_cmd::cargo::cargo_bin("sccache"));
+static CCACHE_BIN: Lazy<PathBuf> = Lazy::new(|| assert_cmd::cargo::cargo_bin("ccache"));
 
-fn stop_sccache() -> Result<()> {
-    trace!("sccache --stop-server");
+fn stop_ccache() -> Result<()> {
+    trace!("ccache --stop-server");
 
-    Command::new(SCCACHE_BIN.as_os_str())
+    Command::new(CCACHE_BIN.as_os_str())
         .arg("--stop-server")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
-        .context("Failed to stop sccache server")?;
+        .context("Failed to stop ccache server")?;
     Ok(())
 }
 
 #[test]
 #[serial]
 fn test_gcp_arg_check() -> Result<()> {
-    trace!("sccache with log");
-    stop_sccache()?;
+    trace!("ccache with log");
+    stop_ccache()?;
 
-    let mut cmd = Command::new(SCCACHE_BIN.as_os_str());
+    let mut cmd = Command::new(CCACHE_BIN.as_os_str());
     cmd.arg("--start-server")
-        .env("SCCACHE_LOG", "debug")
-        .env("SCCACHE_GCS_KEY_PATH", "foo.json");
+        .env("CCACHE_LOG", "debug")
+        .env("CCACHE_GCS_KEY_PATH", "foo.json");
 
     cmd.assert().failure().stderr(predicate::str::contains(
-        "If setting GCS credentials, SCCACHE_GCS_BUCKET",
+        "If setting GCS credentials, CCACHE_GCS_BUCKET",
     ));
 
-    stop_sccache()?;
+    stop_ccache()?;
 
-    let mut cmd = Command::new(SCCACHE_BIN.as_os_str());
+    let mut cmd = Command::new(CCACHE_BIN.as_os_str());
     cmd.arg("--start-server")
-        .env("SCCACHE_LOG", "debug")
-        .env("SCCACHE_GCS_OAUTH_URL", "http://127.0.0.1");
+        .env("CCACHE_LOG", "debug")
+        .env("CCACHE_GCS_OAUTH_URL", "http://127.0.0.1");
 
     cmd.assert().failure().stderr(predicate::str::contains(
-        "If setting GCS credentials, SCCACHE_GCS_BUCKET",
+        "If setting GCS credentials, CCACHE_GCS_BUCKET",
     ));
 
-    stop_sccache()?;
-    let mut cmd = Command::new(SCCACHE_BIN.as_os_str());
+    stop_ccache()?;
+    let mut cmd = Command::new(CCACHE_BIN.as_os_str());
     cmd.arg("--start-server")
-        .env("SCCACHE_LOG", "debug")
-        .env("SCCACHE_GCS_BUCKET", "b")
-        .env("SCCACHE_GCS_CREDENTIALS_URL", "not_valid_url//127.0.0.1")
-        .env("SCCACHE_GCS_KEY_PATH", "foo.json");
+        .env("CCACHE_LOG", "debug")
+        .env("CCACHE_GCS_BUCKET", "b")
+        .env("CCACHE_GCS_CREDENTIALS_URL", "not_valid_url//127.0.0.1")
+        .env("CCACHE_GCS_KEY_PATH", "foo.json");
 
     // This is just a warning
     cmd.assert()
@@ -73,12 +73,12 @@ fn test_gcp_arg_check() -> Result<()> {
 #[test]
 #[serial]
 fn test_s3_invalid_args() -> Result<()> {
-    stop_sccache()?;
+    stop_ccache()?;
 
-    let mut cmd = Command::new(SCCACHE_BIN.as_os_str());
+    let mut cmd = Command::new(CCACHE_BIN.as_os_str());
     cmd.arg("--start-server")
-        .env("SCCACHE_LOG", "debug")
-        .env("SCCACHE_BUCKET", "test")
+        .env("CCACHE_LOG", "debug")
+        .env("CCACHE_BUCKET", "test")
         .env("AWS_ACCESS_KEY_ID", "invalid_ak")
         .env("AWS_SECRET_ACCESS_KEY", "invalid_sk");
 

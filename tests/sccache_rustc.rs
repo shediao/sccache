@@ -18,7 +18,7 @@ use std::{
 struct StopServer;
 impl Drop for StopServer {
     fn drop(&mut self) {
-        let _ = Command::cargo_bin("sccache")
+        let _ = Command::cargo_bin("ccache")
             .unwrap()
             .arg("--stop-server")
             .ok();
@@ -39,7 +39,7 @@ impl Drop for StopServer {
 // │  ├── lib
 // │  │  └── driver.so -> ../driver.so
 // │  └── driver.so
-// ├── sccache/
+// ├── ccache/
 // ├── counter // increases by 1 for every compilation that is not cached
 // ├── RUST_FILE // compile output copied from counter, same content means it was cached
 // └── RUST_FILE.rs
@@ -61,12 +61,12 @@ fn test_symlinks() {
     symlink(root.join("rust1"), &rust).unwrap();
     drop(StopServer);
     let _stop_server = StopServer;
-    run_sccache(root, &bin);
+    run_ccache(root, &bin);
     let output1 = fs::read(&out_file).unwrap();
 
     remove_file(&rust).unwrap();
     symlink(root.join("rust2"), &rust).unwrap();
-    run_sccache(root, &bin);
+    run_ccache(root, &bin);
     let output2 = fs::read(out_file).unwrap();
 
     assert_ne!(output1, output2);
@@ -138,19 +138,19 @@ fi
     set_permissions(&rustc, perm).unwrap();
 }
 
-fn run_sccache(root: &Path, path: &Path) {
+fn run_ccache(root: &Path, path: &Path) {
     let mut paths: OsString = path.into();
     paths.push(":");
     paths.push(var_os("PATH").unwrap());
 
-    Command::cargo_bin("sccache")
+    Command::cargo_bin("ccache")
         .unwrap()
         .current_dir(root)
         .env("PATH", paths)
-        .env("SCCACHE_DIR", root.join("sccache"))
+        .env("CCACHE_DIR", root.join("ccache"))
         .arg("rustc")
         .arg("RUST_FILE.rs")
-        .arg("--crate-name=sccache_rustc_tests")
+        .arg("--crate-name=ccache_rustc_tests")
         .arg("--crate-type=lib")
         .arg("--emit=link")
         .arg("--out-dir")

@@ -1,6 +1,6 @@
-# Sccache high level architecture
+# Ccache high level architecture
 
-This schema shows at high level how sccache works.
+This schema shows at high level how ccache works.
 
 
 ```mermaid

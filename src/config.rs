@@ -1,4 +1,4 @@
-// Copyright 2016 Mozilla Foundation
+// Copyright 2016 Shediao Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,23 +37,23 @@ lazy_static! {
     static ref CACHED_CONFIG: Mutex<Option<CachedFileConfig>> = Mutex::new(None);
 }
 
-const ORGANIZATION: &str = "Mozilla";
-const APP_NAME: &str = "sccache";
-const DIST_APP_NAME: &str = "sccache-dist-client";
+const ORGANIZATION: &str = "Shediao";
+const APP_NAME: &str = "ccache";
+const DIST_APP_NAME: &str = "ccache-dist-client";
 const TEN_GIGS: u64 = 10 * 1024 * 1024 * 1024;
 
 const MOZILLA_OAUTH_PKCE_CLIENT_ID: &str = "F1VVD6nRTckSVrviMRaOdLBWIk1AvHYo";
-// The sccache audience is an API set up in auth0 for sccache to allow 7 day expiry,
+// The ccache audience is an API set up in auth0 for ccache to allow 7 day expiry,
 // the openid scope allows us to query the auth0 /userinfo endpoint which contains
-// group information due to Mozilla rules.
+// group information due to Shediao rules.
 const MOZILLA_OAUTH_PKCE_AUTH_URL: &str =
-    "https://auth.mozilla.auth0.com/authorize?audience=sccache&scope=openid%20profile";
-const MOZILLA_OAUTH_PKCE_TOKEN_URL: &str = "https://auth.mozilla.auth0.com/oauth/token";
+    "https://auth.shediao.auth0.com/authorize?audience=ccache&scope=openid%20profile";
+const MOZILLA_OAUTH_PKCE_TOKEN_URL: &str = "https://auth.shediao.auth0.com/oauth/token";
 
 pub const INSECURE_DIST_CLIENT_TOKEN: &str = "dangerously_insecure_client";
 
-// Unfortunately this means that nothing else can use the sccache cache dir as
-// this top level directory is used directly to store sccache cached objects...
+// Unfortunately this means that nothing else can use the ccache cache dir as
+// this top level directory is used directly to store ccache cached objects...
 pub fn default_disk_cache_dir() -> PathBuf {
     ProjectDirs::from("", ORGANIZATION, APP_NAME)
         .expect("Unable to retrieve disk cache directory")
@@ -200,7 +200,7 @@ pub struct GHACacheConfig {
 }
 
 /// Memcached's default value of expiration is 10800s (3 hours), which is too
-/// short for use case of sccache.
+/// short for use case of ccache.
 ///
 /// We increase the default expiration to 86400s (1 day) to balance between
 /// memory consumpation and cache hit rate.
@@ -365,7 +365,7 @@ pub enum DistAuth {
     Oauth2Implicit { client_id: String, auth_url: String },
 }
 
-// Convert a type = "mozilla" immediately into an actual oauth configuration
+// Convert a type = "shediao" immediately into an actual oauth configuration
 // https://github.com/serde-rs/serde/issues/595 could help if implemented
 impl<'a> Deserialize<'a> for DistAuth {
     fn deserialize<D>(deserializer: D) -> StdResult<Self, D::Error>
@@ -378,8 +378,8 @@ impl<'a> Deserialize<'a> for DistAuth {
         pub enum Helper {
             #[serde(rename = "token")]
             Token { token: String },
-            #[serde(rename = "mozilla")]
-            Mozilla,
+            #[serde(rename = "shediao")]
+            Shediao,
             #[serde(rename = "oauth2_code_grant_pkce")]
             Oauth2CodeGrantPKCE {
                 client_id: String,
@@ -394,7 +394,7 @@ impl<'a> Deserialize<'a> for DistAuth {
 
         Ok(match helper {
             Helper::Token { token } => DistAuth::Token { token },
-            Helper::Mozilla => DistAuth::Oauth2CodeGrantPKCE {
+            Helper::Shediao => DistAuth::Oauth2CodeGrantPKCE {
                 client_id: MOZILLA_OAUTH_PKCE_CLIENT_ID.to_owned(),
                 auth_url: MOZILLA_OAUTH_PKCE_AUTH_URL.to_owned(),
                 token_url: MOZILLA_OAUTH_PKCE_TOKEN_URL.to_owned(),
@@ -504,14 +504,14 @@ pub struct EnvConfig {
 
 fn config_from_env() -> Result<EnvConfig> {
     // ======= AWS =======
-    let s3 = env::var("SCCACHE_BUCKET").ok().map(|bucket| {
-        let region = env::var("SCCACHE_REGION").ok();
-        let no_credentials = env::var("SCCACHE_S3_NO_CREDENTIALS").ok().is_some();
-        let use_ssl = env::var("SCCACHE_S3_USE_SSL")
+    let s3 = env::var("CCACHE_BUCKET").ok().map(|bucket| {
+        let region = env::var("CCACHE_REGION").ok();
+        let no_credentials = env::var("CCACHE_S3_NO_CREDENTIALS").ok().is_some();
+        let use_ssl = env::var("CCACHE_S3_USE_SSL")
             .ok()
             .map(|value| value != "off");
-        let endpoint = env::var("SCCACHE_ENDPOINT").ok();
-        let key_prefix = env::var("SCCACHE_S3_KEY_PREFIX")
+        let endpoint = env::var("CCACHE_ENDPOINT").ok();
+        let key_prefix = env::var("CCACHE_S3_KEY_PREFIX")
             .ok()
             .as_ref()
             .map(|s| s.trim_end_matches('/'))
@@ -532,39 +532,39 @@ fn config_from_env() -> Result<EnvConfig> {
         && (env::var_os("AWS_ACCESS_KEY_ID").is_some()
             || env::var_os("AWS_SECRET_ACCESS_KEY").is_some())
     {
-        bail!("If setting S3 credentials, SCCACHE_S3_NO_CREDENTIALS must not be set.");
+        bail!("If setting S3 credentials, CCACHE_S3_NO_CREDENTIALS must not be set.");
     }
 
     // ======= redis =======
-    let redis = env::var("SCCACHE_REDIS")
+    let redis = env::var("CCACHE_REDIS")
         .ok()
         .map(|url| RedisCacheConfig { url });
 
     // ======= memcached =======
-    let expiration = match env::var("SCCACHE_MEMCACHED_EXPIRATION").ok() {
+    let expiration = match env::var("CCACHE_MEMCACHED_EXPIRATION").ok() {
         None => DEFAULT_MEMCACHED_CACHE_EXPIRATION,
         Some(v) => v
             .parse()
-            .map_err(|err| anyhow!("SCCACHE_MEMCACHED_EXPIRATION value is invalid: {err:?}"))?,
+            .map_err(|err| anyhow!("CCACHE_MEMCACHED_EXPIRATION value is invalid: {err:?}"))?,
     };
 
-    let memcached = env::var("SCCACHE_MEMCACHED")
+    let memcached = env::var("CCACHE_MEMCACHED")
         .ok()
         .map(|url| MemcachedCacheConfig { url, expiration });
 
     // ======= GCP/GCS =======
-    if (env::var("SCCACHE_GCS_CREDENTIALS_URL").is_ok()
-        || env::var("SCCACHE_GCS_OAUTH_URL").is_ok()
-        || env::var("SCCACHE_GCS_KEY_PATH").is_ok())
-        && env::var("SCCACHE_GCS_BUCKET").is_err()
+    if (env::var("CCACHE_GCS_CREDENTIALS_URL").is_ok()
+        || env::var("CCACHE_GCS_OAUTH_URL").is_ok()
+        || env::var("CCACHE_GCS_KEY_PATH").is_ok())
+        && env::var("CCACHE_GCS_BUCKET").is_err()
     {
         bail!(
-            "If setting GCS credentials, SCCACHE_GCS_BUCKET and an auth mechanism need to be set."
+            "If setting GCS credentials, CCACHE_GCS_BUCKET and an auth mechanism need to be set."
         );
     }
 
-    let gcs = env::var("SCCACHE_GCS_BUCKET").ok().map(|bucket| {
-        let key_prefix = env::var("SCCACHE_GCS_KEY_PREFIX")
+    let gcs = env::var("CCACHE_GCS_BUCKET").ok().map(|bucket| {
+        let key_prefix = env::var("CCACHE_GCS_KEY_PREFIX")
             .ok()
             .as_ref()
             .map(|s| s.trim_end_matches('/'))
@@ -574,27 +574,27 @@ fn config_from_env() -> Result<EnvConfig> {
 
 
 
-        if env::var("SCCACHE_GCS_OAUTH_URL").is_ok() {
-            eprintln!("SCCACHE_GCS_OAUTH_URL has been deprecated");
+        if env::var("CCACHE_GCS_OAUTH_URL").is_ok() {
+            eprintln!("CCACHE_GCS_OAUTH_URL has been deprecated");
             eprintln!("if you intend to use vm metadata for auth, please set correct service account intead");
         }
 
-        let credential_url = env::var("SCCACHE_GCS_CREDENTIALS_URL").ok();
+        let credential_url = env::var("CCACHE_GCS_CREDENTIALS_URL").ok();
 
-        let cred_path = env::var("SCCACHE_GCS_KEY_PATH").ok();
-        let service_account = env::var("SCCACHE_GCS_SERVICE_ACCOUNT").ok();
+        let cred_path = env::var("CCACHE_GCS_KEY_PATH").ok();
+        let service_account = env::var("CCACHE_GCS_SERVICE_ACCOUNT").ok();
 
-        let rw_mode = match env::var("SCCACHE_GCS_RW_MODE").as_ref().map(String::as_str) {
+        let rw_mode = match env::var("CCACHE_GCS_RW_MODE").as_ref().map(String::as_str) {
             Ok("READ_ONLY") => GCSCacheRWMode::ReadOnly,
             Ok("READ_WRITE") => GCSCacheRWMode::ReadWrite,
             // TODO: unsure if these should warn during the configuration loading
             // or at the time when they're actually used to connect to GCS
             Ok(_) => {
-                warn!("Invalid SCCACHE_GCS_RW_MODE-- defaulting to READ_ONLY.");
+                warn!("Invalid CCACHE_GCS_RW_MODE-- defaulting to READ_ONLY.");
                 GCSCacheRWMode::ReadOnly
             }
             _ => {
-                warn!("No SCCACHE_GCS_RW_MODE specified-- defaulting to READ_ONLY.");
+                warn!("No CCACHE_GCS_RW_MODE specified-- defaulting to READ_ONLY.");
                 GCSCacheRWMode::ReadOnly
             }
         };
@@ -610,15 +610,15 @@ fn config_from_env() -> Result<EnvConfig> {
     });
 
     // ======= GHA =======
-    let gha = if let Ok(version) = env::var("SCCACHE_GHA_VERSION") {
-        // If SCCACHE_GHA_VERSION has been set, we don't need to check
-        // SCCACHE_GHA_ENABLED's value anymore.
+    let gha = if let Ok(version) = env::var("CCACHE_GHA_VERSION") {
+        // If CCACHE_GHA_VERSION has been set, we don't need to check
+        // CCACHE_GHA_ENABLED's value anymore.
         Some(GHACacheConfig {
             enabled: true,
             version,
         })
-    } else if let Ok(enabled) = env::var("SCCACHE_GHA_ENABLED") {
-        // If only SCCACHE_GHA_ENABLED has been set, enable with
+    } else if let Ok(enabled) = env::var("CCACHE_GHA_ENABLED") {
+        // If only CCACHE_GHA_ENABLED has been set, enable with
         // default version.
         if enabled == "on" || enabled == "true" {
             Some(GHACacheConfig {
@@ -634,10 +634,10 @@ fn config_from_env() -> Result<EnvConfig> {
 
     // ======= Azure =======
     let azure = if let (Ok(connection_string), Ok(container)) = (
-        env::var("SCCACHE_AZURE_CONNECTION_STRING"),
-        env::var("SCCACHE_AZURE_BLOB_CONTAINER"),
+        env::var("CCACHE_AZURE_CONNECTION_STRING"),
+        env::var("CCACHE_AZURE_BLOB_CONTAINER"),
     ) {
-        let key_prefix = env::var("SCCACHE_AZURE_KEY_PREFIX")
+        let key_prefix = env::var("CCACHE_AZURE_KEY_PREFIX")
             .ok()
             .as_ref()
             .map(|s| s.trim_end_matches('/'))
@@ -654,8 +654,8 @@ fn config_from_env() -> Result<EnvConfig> {
     };
 
     // ======= WebDAV =======
-    let webdav = if let Ok(endpoint) = env::var("SCCACHE_WEBDAV_ENDPOINT") {
-        let key_prefix = env::var("SCCACHE_WEBDAV_KEY_PREFIX")
+    let webdav = if let Ok(endpoint) = env::var("CCACHE_WEBDAV_ENDPOINT") {
+        let key_prefix = env::var("CCACHE_WEBDAV_KEY_PREFIX")
             .ok()
             .as_ref()
             .map(|s| s.trim_end_matches('/'))
@@ -672,8 +672,8 @@ fn config_from_env() -> Result<EnvConfig> {
     };
 
     // ======= Local =======
-    let disk_dir = env::var_os("SCCACHE_DIR").map(PathBuf::from);
-    let disk_sz = env::var("SCCACHE_CACHE_SIZE")
+    let disk_dir = env::var_os("CCACHE_DIR").map(PathBuf::from);
+    let disk_sz = env::var("CCACHE_CACHE_SIZE")
         .ok()
         .and_then(|v| parse_size(&v));
 
@@ -735,7 +735,7 @@ impl Config {
     pub fn load() -> Result<Self> {
         let env_conf = config_from_env()?;
 
-        let file_conf_path = config_file("SCCACHE_CONF", "config");
+        let file_conf_path = config_file("CCACHE_CONF", "config");
         let file_conf = try_read_config_file(&file_conf_path)
             .context("Failed to load config file")?
             .unwrap_or_default();
@@ -821,7 +821,7 @@ impl CachedConfig {
     }
 
     fn file_config_path() -> PathBuf {
-        config_file("SCCACHE_CACHED_CONF", "cached-config")
+        config_file("CCACHE_CACHED_CONF", "cached-config")
     }
     fn load_file_config() -> Result<CachedFileConfig> {
         let file_conf_path = &*CACHED_CONFIG_PATH;
@@ -874,8 +874,8 @@ pub mod scheduler {
             issuer: String,
             jwks_url: String,
         },
-        #[serde(rename = "mozilla")]
-        Mozilla { required_groups: Vec<String> },
+        #[serde(rename = "shediao")]
+        Shediao { required_groups: Vec<String> },
         #[serde(rename = "proxy_token")]
         ProxyToken {
             url: String,
@@ -921,7 +921,7 @@ pub mod server {
         TEN_GIGS
     }
 
-    const DEFAULT_POT_CLONE_FROM: &str = "sccache-template";
+    const DEFAULT_POT_CLONE_FROM: &str = "ccache-template";
     const DEFAULT_POT_FS_ROOT: &str = "/opt/pot";
     const DEFAULT_POT_CMD: &str = "pot";
     const DEFAULT_POT_CLONE_ARGS: &[&str] = &["-i", "lo0|127.0.0.2"];
@@ -1066,28 +1066,28 @@ fn config_overrides() {
 #[test]
 #[serial]
 fn test_s3_no_credentials() {
-    env::set_var("SCCACHE_S3_NO_CREDENTIALS", "1");
-    env::set_var("SCCACHE_BUCKET", "my-bucket");
+    env::set_var("CCACHE_S3_NO_CREDENTIALS", "1");
+    env::set_var("CCACHE_BUCKET", "my-bucket");
     env::set_var("AWS_ACCESS_KEY_ID", "aws-access-key-id");
     env::set_var("AWS_SECRET_ACCESS_KEY", "aws-secret-access-key");
 
     let error = config_from_env().unwrap_err();
     assert_eq!(
-        "If setting S3 credentials, SCCACHE_S3_NO_CREDENTIALS must not be set.",
+        "If setting S3 credentials, CCACHE_S3_NO_CREDENTIALS must not be set.",
         error.to_string()
     );
 
-    env::remove_var("SCCACHE_S3_NO_CREDENTIALS");
-    env::remove_var("SCCACHE_BUCKET");
+    env::remove_var("CCACHE_S3_NO_CREDENTIALS");
+    env::remove_var("CCACHE_BUCKET");
     env::remove_var("AWS_ACCESS_KEY_ID");
     env::remove_var("AWS_SECRET_ACCESS_KEY");
 }
 
 #[test]
 fn test_gcs_service_account() {
-    env::set_var("SCCACHE_GCS_BUCKET", "my-bucket");
-    env::set_var("SCCACHE_GCS_SERVICE_ACCOUNT", "my@example.com");
-    env::set_var("SCCACHE_GCS_RW_MODE", "READ_WRITE");
+    env::set_var("CCACHE_GCS_BUCKET", "my-bucket");
+    env::set_var("CCACHE_GCS_SERVICE_ACCOUNT", "my@example.com");
+    env::set_var("CCACHE_GCS_RW_MODE", "READ_WRITE");
 
     let env_cfg = config_from_env().unwrap();
     match env_cfg.cache.gcs {
@@ -1104,9 +1104,9 @@ fn test_gcs_service_account() {
         None => unreachable!(),
     };
 
-    env::remove_var("SCCACHE_GCS_BUCKET");
-    env::remove_var("SCCACHE_GCS_SERVICE_ACCOUNT");
-    env::remove_var("SCCACHE_GCS_RW_MODE");
+    env::remove_var("CCACHE_GCS_BUCKET");
+    env::remove_var("CCACHE_GCS_SERVICE_ACCOUNT");
+    env::remove_var("CCACHE_GCS_RW_MODE");
 }
 
 #[test]
@@ -1121,7 +1121,7 @@ scheduler_url = "http://1.2.3.4:10600"
 toolchains = []
 # the maximum size of the toolchain cache in bytes
 toolchain_cache_size = 5368709120
-cache_dir = "/home/user/.cache/sccache-dist-client"
+cache_dir = "/home/user/.cache/ccache-dist-client"
 
 [dist.auth]
 type = "token"
@@ -1132,7 +1132,7 @@ token = "secrettoken"
 # does not work as it appears
 
 [cache.disk]
-dir = "/tmp/.cache/sccache"
+dir = "/tmp/.cache/ccache"
 size = 7516192768 # 7 GiBytes
 
 [cache.gcs]
@@ -1145,7 +1145,7 @@ service_account = "example_service_account"
 
 [cache.gha]
 enabled = true
-version = "sccache"
+version = "ccache"
 
 [cache.memcached]
 url = "..."
@@ -1174,7 +1174,7 @@ key_prefix = "webdavprefix"
             cache: CacheConfigs {
                 azure: None, // TODO not sure how to represent a unit struct in TOML Some(AzureCacheConfig),
                 disk: Some(DiskCacheConfig {
-                    dir: PathBuf::from("/tmp/.cache/sccache"),
+                    dir: PathBuf::from("/tmp/.cache/ccache"),
                     size: 7 * 1024 * 1024 * 1024,
                 }),
                 gcs: Some(GCSCacheConfig {
@@ -1187,7 +1187,7 @@ key_prefix = "webdavprefix"
                 }),
                 gha: Some(GHACacheConfig {
                     enabled: true,
-                    version: "sccache".to_string()
+                    version: "ccache".to_string()
                 }),
                 redis: Some(RedisCacheConfig {
                     url: "redis://user:passwd@1.2.3.4:6379/1".to_owned(),
@@ -1221,7 +1221,7 @@ key_prefix = "webdavprefix"
                 ),
                 #[cfg(not(any(feature = "dist-client", feature = "dist-server")))]
                 scheduler_url: Some("http://1.2.3.4:10600".to_owned()),
-                cache_dir: PathBuf::from("/home/user/.cache/sccache-dist-client"),
+                cache_dir: PathBuf::from("/home/user/.cache/ccache-dist-client"),
                 toolchains: vec![],
                 toolchain_cache_size: 5368709120,
                 rewrite_includes_only: false,

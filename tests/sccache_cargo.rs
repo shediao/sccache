@@ -20,7 +20,7 @@ use std::process::{Command, Stdio};
 #[macro_use]
 extern crate log;
 
-static SCCACHE_BIN: Lazy<PathBuf> = Lazy::new(|| assert_cmd::cargo::cargo_bin("sccache"));
+static CCACHE_BIN: Lazy<PathBuf> = Lazy::new(|| assert_cmd::cargo::cargo_bin("ccache"));
 static CARGO: Lazy<OsString> = Lazy::new(|| std::env::var_os("CARGO").unwrap());
 static CRATE_DIR: Lazy<PathBuf> =
     Lazy::new(|| Path::new(file!()).parent().unwrap().join("test-crate"));
@@ -43,21 +43,21 @@ static LOGGER: Lazy<Result<(), Infallible>> = Lazy::new(|| {
 
 /// Used as a test setup fixture. The drop implementation cleans up after a _successful_ test.
 /// We catch the panic to ensure that the drop runs and the TempDir is cleaned up.
-struct SccacheTest<'a> {
-    /// Tempdir used for Sccache cache and cargo output. It is kept in the struct only to have the
-    /// destructor run when SccacheTest goes out of scope, but is never used otherwise.
+struct CcacheTest<'a> {
+    /// Tempdir used for Ccache cache and cargo output. It is kept in the struct only to have the
+    /// destructor run when CcacheTest goes out of scope, but is never used otherwise.
     #[allow(dead_code)]
     tempdir: tempfile::TempDir,
     env: Vec<(&'a str, std::ffi::OsString)>,
 }
 
-impl SccacheTest<'_> {
+impl CcacheTest<'_> {
     fn new(additional_envs: Option<&[(&'static str, std::ffi::OsString)]>) -> Result<Self> {
         assert!(LOGGER.is_ok());
 
         // Create a temp directory to use for the disk cache.
         let tempdir = tempfile::Builder::new()
-            .prefix("sccache_test_rust_cargo")
+            .prefix("ccache_test_rust_cargo")
             .tempdir()
             .context("Failed to create tempdir")?;
         let cache_dir = tempdir.path().join("cache");
@@ -65,22 +65,22 @@ impl SccacheTest<'_> {
         let cargo_dir = tempdir.path().join("cargo");
         fs::create_dir(&cargo_dir)?;
 
-        // Ensure there's no existing sccache server running.
-        stop_sccache()?;
+        // Ensure there's no existing ccache server running.
+        stop_ccache()?;
 
-        trace!("sccache --start-server");
+        trace!("ccache --start-server");
 
-        Command::new(SCCACHE_BIN.as_os_str())
+        Command::new(CCACHE_BIN.as_os_str())
             .arg("--start-server")
-            .env("SCCACHE_DIR", &cache_dir)
+            .env("CCACHE_DIR", &cache_dir)
             .assert()
             .try_success()
-            .context("Failed to start sccache server")?;
+            .context("Failed to start ccache server")?;
 
         let mut env = vec![
             ("CARGO_TARGET_DIR", cargo_dir.as_os_str().to_owned()),
-            ("RUSTC_WRAPPER", SCCACHE_BIN.as_os_str().to_owned()),
-            // Explicitly disable incremental compilation because sccache is unable to cache it at
+            ("RUSTC_WRAPPER", CCACHE_BIN.as_os_str().to_owned()),
+            // Explicitly disable incremental compilation because ccache is unable to cache it at
             // the time of writing.
             ("CARGO_INCREMENTAL", OsString::from("0")),
             ("TEST_ENV_VAR", OsString::from("1")),
@@ -90,63 +90,63 @@ impl SccacheTest<'_> {
             env.extend_from_slice(vec);
         }
 
-        Ok(SccacheTest {
+        Ok(CcacheTest {
             tempdir,
             env: env.to_owned(),
         })
     }
 
-    /// Show the statistics for sccache. This will be called at the end of a test and making this
+    /// Show the statistics for ccache. This will be called at the end of a test and making this
     /// an associated function will ensure that the struct lives until the end of the test.
     fn show_stats(&self) -> assert_cmd::assert::AssertResult {
-        trace!("sccache --show-stats");
-        Command::new(SCCACHE_BIN.as_os_str())
+        trace!("ccache --show-stats");
+        Command::new(CCACHE_BIN.as_os_str())
             .args(["--show-stats", "--stats-format=json"])
             .assert()
             .try_success()
     }
 }
 
-impl Drop for SccacheTest<'_> {
+impl Drop for CcacheTest<'_> {
     fn drop(&mut self) {
-        stop_sccache().expect("Stopping Sccache server failed");
+        stop_ccache().expect("Stopping Ccache server failed");
     }
 }
 
-fn stop_sccache() -> Result<()> {
-    trace!("sccache --stop-server");
+fn stop_ccache() -> Result<()> {
+    trace!("ccache --stop-server");
 
-    Command::new(SCCACHE_BIN.as_os_str())
+    Command::new(CCACHE_BIN.as_os_str())
         .arg("--stop-server")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
-        .context("Failed to stop sccache server")?;
+        .context("Failed to stop ccache server")?;
     Ok(())
 }
 
 #[test]
 #[serial]
 fn test_rust_cargo_check() -> Result<()> {
-    test_rust_cargo_cmd("check", SccacheTest::new(None)?)
+    test_rust_cargo_cmd("check", CcacheTest::new(None)?)
 }
 
 #[test]
 #[serial]
 fn test_rust_cargo_build() -> Result<()> {
-    test_rust_cargo_cmd("build", SccacheTest::new(None)?)
+    test_rust_cargo_cmd("build", CcacheTest::new(None)?)
 }
 
 #[test]
 #[serial]
 #[cfg(unix)]
 fn test_run_log_no_perm() -> Result<()> {
-    trace!("sccache with log");
-    stop_sccache()?;
-    let mut cmd = Command::new(SCCACHE_BIN.as_os_str());
+    trace!("ccache with log");
+    stop_ccache()?;
+    let mut cmd = Command::new(CCACHE_BIN.as_os_str());
     cmd.arg("gcc")
-        .env("SCCACHE_ERROR_LOG", "/no-perm.log") // Should not work
-        .env("SCCACHE_LOG", "debug");
+        .env("CCACHE_ERROR_LOG", "/no-perm.log") // Should not work
+        .env("CCACHE_LOG", "debug");
 
     cmd.assert().failure().stderr(predicate::str::contains(
         "Cannot open/write log file '/no-perm.log'",
@@ -157,18 +157,18 @@ fn test_run_log_no_perm() -> Result<()> {
 #[test]
 #[serial]
 fn test_run_log() -> Result<()> {
-    trace!("sccache with log");
-    stop_sccache()?;
+    trace!("ccache with log");
+    stop_ccache()?;
 
     let tempdir = tempfile::Builder::new()
-        .prefix("sccache_test_rust_cargo")
+        .prefix("ccache_test_rust_cargo")
         .tempdir()
         .context("Failed to create tempdir")?;
     let tmppath = tempdir.path().join("perm.log");
-    let mut cmd = Command::new(SCCACHE_BIN.as_os_str());
+    let mut cmd = Command::new(CCACHE_BIN.as_os_str());
     cmd.arg("--show-stats")
-        .env("SCCACHE_ERROR_LOG", &tmppath) // Should not work
-        .env("SCCACHE_LOG", "debug");
+        .env("CCACHE_ERROR_LOG", &tmppath) // Should not work
+        .env("CCACHE_LOG", "debug");
 
     cmd.assert().success();
     assert!(Path::new(&tmppath).is_file());
@@ -176,11 +176,11 @@ fn test_run_log() -> Result<()> {
 }
 
 /// This test checks that changing an environment variable reference by env! is detected by
-/// sccache, causes a rebuild and is correctly printed to stdout.
+/// ccache, causes a rebuild and is correctly printed to stdout.
 #[test]
 #[serial]
 fn test_rust_cargo_run_with_env_dep_parsing() -> Result<()> {
-    test_rust_cargo_env_dep(SccacheTest::new(None)?)
+    test_rust_cargo_env_dep(CcacheTest::new(None)?)
 }
 
 #[cfg(feature = "unstable")]
@@ -189,7 +189,7 @@ fn test_rust_cargo_run_with_env_dep_parsing() -> Result<()> {
 fn test_rust_cargo_check_nightly() -> Result<()> {
     test_rust_cargo_cmd(
         "check",
-        SccacheTest::new(Some(&[("RUSTFLAGS", OsString::from("-Zprofile"))]))?,
+        CcacheTest::new(Some(&[("RUSTFLAGS", OsString::from("-Zprofile"))]))?,
     )
 }
 
@@ -199,11 +199,11 @@ fn test_rust_cargo_check_nightly() -> Result<()> {
 fn test_rust_cargo_build_nightly() -> Result<()> {
     test_rust_cargo_cmd(
         "build",
-        SccacheTest::new(Some(&[("RUSTFLAGS", OsString::from("-Zprofile"))]))?,
+        CcacheTest::new(Some(&[("RUSTFLAGS", OsString::from("-Zprofile"))]))?,
     )
 }
 
-fn cargo_clean(test_info: &SccacheTest) -> Result<()> {
+fn cargo_clean(test_info: &CcacheTest) -> Result<()> {
     Command::new(CARGO.as_os_str())
         .args(["clean"])
         .envs(test_info.env.iter().cloned())
@@ -213,10 +213,10 @@ fn cargo_clean(test_info: &SccacheTest) -> Result<()> {
     Ok(())
 }
 
-/// Test that building a simple Rust crate with cargo using sccache results in a cache hit
+/// Test that building a simple Rust crate with cargo using ccache results in a cache hit
 /// when built a second time and a cache miss, when the environment variable referenced via
 /// env! is changed.
-fn test_rust_cargo_cmd(cmd: &str, test_info: SccacheTest) -> Result<()> {
+fn test_rust_cargo_cmd(cmd: &str, test_info: CcacheTest) -> Result<()> {
     // `cargo clean` first, just to be sure there's no leftover build objects.
     cargo_clean(&test_info)?;
 
@@ -246,7 +246,7 @@ fn test_rust_cargo_cmd(cmd: &str, test_info: SccacheTest) -> Result<()> {
     Ok(())
 }
 
-fn test_rust_cargo_env_dep(test_info: SccacheTest) -> Result<()> {
+fn test_rust_cargo_env_dep(test_info: CcacheTest) -> Result<()> {
     cargo_clean(&test_info)?;
     // Now build the crate with cargo.
     Command::new(CARGO.as_os_str())

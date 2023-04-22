@@ -1,4 +1,4 @@
-// Copyright 2016 Mozilla Foundation
+// Copyright 2016 Shediao Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
 
 use anyhow::{bail, Context, Error, Result};
 use flate2::read::GzDecoder;
-use sccache::dist::{
+use ccache::dist::{
     BuildResult, BuilderIncoming, CompileCommand, InputsReader, OutputData, ProcessOutput, TcCache,
     Toolchain,
 };
-use sccache::lru_disk_cache::Error as LruError;
+use ccache::lru_disk_cache::Error as LruError;
 use std::collections::{hash_map, HashMap};
 use std::path::{Path, PathBuf};
 use std::process::{ChildStdin, Command, Output, Stdio};
@@ -129,7 +129,7 @@ impl PotBuilder {
             .check_stdout_trim()
             .context("Failed to force delete container")?
             .split('\n')
-            .filter(|a| a.starts_with("sccache-builder-") || a.starts_with("sccache-image-"))
+            .filter(|a| a.starts_with("ccache-builder-") || a.starts_with("ccache-image-"))
             .map(|s| s.to_string())
             .collect::<Vec<String>>();
         to_remove.sort();
@@ -240,7 +240,7 @@ impl PotBuilder {
         pot_cmd: &PathBuf,
         pot_clone_args: &[String],
     ) -> Result<String> {
-        let imagename = format!("sccache-image-{}", &tc.archive_id);
+        let imagename = format!("ccache-image-{}", &tc.archive_id);
         trace!("Creating toolchain image: {}", imagename);
         let mut clone_args: Vec<&str> = ["clone", "-p", &imagename, "-P", clone_from].to_vec();
         clone_args.append(&mut pot_clone_args.iter().map(|s| s as &str).collect());
@@ -282,7 +282,7 @@ impl PotBuilder {
         pot_cmd: &PathBuf,
         pot_clone_args: &[String],
     ) -> Result<String> {
-        let cid = format!("sccache-builder-{}", Uuid::new_v4());
+        let cid = format!("ccache-builder-{}", Uuid::new_v4());
         let mut clone_args: Vec<&str> = ["clone", "-p", &cid, "-P", image].to_vec();
         clone_args.append(&mut pot_clone_args.iter().map(|s| s as &str).collect());
         Command::new(pot_cmd)

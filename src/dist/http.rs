@@ -1,4 +1,4 @@
-// Copyright 2016 Mozilla Foundation
+// Copyright 2016 Shediao Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -845,7 +845,7 @@ mod server {
                 ))();
                 trace!("Res {}: {:?}", req_id, response);
                 response
-            }).map_err(|e| anyhow!(format!("Failed to start http server for sccache scheduler: {}", e)))?;
+            }).map_err(|e| anyhow!(format!("Failed to start http server for ccache scheduler: {}", e)))?;
 
             // This limit is rouille's default for `start_server_with_pool`, which
             // we would use, except that interface doesn't permit any sort of
@@ -1020,7 +1020,7 @@ mod server {
                 ))();
                 trace!("Res {}: {:?}", req_id, response);
                 response
-            }, cert_pem, privkey_pem).map_err(|e| anyhow!(format!("Failed to start http server for sccache server: {}", e)))?;
+            }, cert_pem, privkey_pem).map_err(|e| anyhow!(format!("Failed to start http server for ccache server: {}", e)))?;
 
             // This limit is rouille's default for `start_server_with_pool`, which
             // we would use, except that interface doesn't permit any sort of
