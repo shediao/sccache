@@ -12,22 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[cfg(feature = "azure")]
-pub mod azure;
 #[allow(clippy::module_inception)]
 pub mod cache;
 pub mod disk;
-#[cfg(feature = "gcs")]
-pub mod gcs;
-#[cfg(feature = "gha")]
-pub mod gha;
 #[cfg(feature = "memcached")]
 pub mod memcached;
 #[cfg(feature = "redis")]
 pub mod redis;
-#[cfg(feature = "s3")]
-pub mod s3;
-#[cfg(feature = "webdav")]
-pub mod webdav;
 
 pub use crate::cache::cache::*;

@@ -101,23 +101,11 @@ fn get_clap_command() -> clap::Command {
         .max_term_width(110)
         .after_help(concat!(
             "Enabled features:\n",
-            "    S3:        ",
-            cfg!(feature = "s3"),
-            "\n",
             "    Redis:     ",
             cfg!(feature = "redis"),
             "\n",
             "    Memcached: ",
             cfg!(feature = "memcached"),
-            "\n",
-            "    GCS:       ",
-            cfg!(feature = "gcs"),
-            "\n",
-            "    GHA:       ",
-            cfg!(feature = "gha"),
-            "\n",
-            "    Azure:     ",
-            cfg!(feature = "azure"),
             "\n"
         ))
         .args(&[
